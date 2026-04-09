@@ -7,3 +7,4 @@
 - ChenHaoyang1213: chore: 添加Docker Compose配置、后端依赖和README文档
 - NOONELIKEYOU8: feat: 搭建FastAPI后端骨架，实现JWT认证和数据库初始化
 - LuckFan: feat: 添加学生和导游角色管理API
+- NOONELIKEYOU8: feat: 集成LLM编排服务管道和RAG检索服务
