@@ -9,3 +9,4 @@
 - LuckFan: feat: 添加学生和导游角色管理API
 - NOONELIKEYOU8: feat: 集成LLM编排服务管道和RAG检索服务
 - Unk1ndledAC: data: 添加景点知识库JSON、实体关系图谱和路线配置数据
+- Unk1ndledAC: feat: 实现知识库CRUD API、图谱存储和CSV数据导入脚本
