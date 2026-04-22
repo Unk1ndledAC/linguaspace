@@ -10,3 +10,4 @@
 - NOONELIKEYOU8: feat: 集成LLM编排服务管道和RAG检索服务
 - NOONELIKEYOU8: feat: 实现向量嵌入服务、知识图谱查询和路线推荐API
 - ChenRongkun: feat: 搭建React前端工程，配置Vite、TailwindCSS和路由
+- ChenRongkun: feat: 实现游客门户首页、项目展示、智能导览和场景页面
