@@ -12,3 +12,5 @@
 - ChenRongkun: feat: 搭建React前端工程，配置Vite、TailwindCSS和路由
 - ChenRongkun: feat: 实现游客门户首页、项目展示、智能导览和场景页面
 - ChenRongkun: feat: 添加图片识别、知识图谱展示和路线规划演示组件
+- NOONELIKEYOU8: Merge: 合并游客端前端分支到develop
+- LuckFan: feat: 添加训练报告、导游审核界面和学生/导游门户页面
