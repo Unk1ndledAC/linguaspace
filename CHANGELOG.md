@@ -14,3 +14,5 @@
 - ChenRongkun: feat: 添加图片识别、知识图谱展示和路线规划演示组件
 - NOONELIKEYOU8: Merge: 合并游客端前端分支到develop
 - LuckFan: feat: 添加训练报告、导游审核界面和学生/导游门户页面
+- NOONELIKEYOU8: Merge: 合并实训前端分支到develop
+- Unk1ndledAC: feat: 搭建管理端知识库CRUD、图谱管理和健康检查页面
