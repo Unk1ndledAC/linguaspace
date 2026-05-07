@@ -16,3 +16,4 @@
 - LuckFan: feat: 添加训练报告、导游审核界面和学生/导游门户页面
 - NOONELIKEYOU8: Merge: 合并实训前端分支到develop
 - Unk1ndledAC: feat: 搭建管理端知识库CRUD、图谱管理和健康检查页面
+- NOONELIKEYOU8: feat: 集成图片问答、TTS语音合成服务和游客门户页面
