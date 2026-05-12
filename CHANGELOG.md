@@ -18,3 +18,4 @@
 - Unk1ndledAC: feat: 搭建管理端知识库CRUD、图谱管理和健康检查页面
 - NOONELIKEYOU8: feat: 集成图片问答、TTS语音合成服务和游客门户页面
 - LuckFan: feat: 实现实训评分引擎、AI评判和协同摘要逻辑
+- NOONELIKEYOU8: refactor: 重构后端服务层架构，优化路由和依赖注入设计
