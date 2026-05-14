@@ -19,3 +19,4 @@
 - NOONELIKEYOU8: feat: 集成图片问答、TTS语音合成服务和游客门户页面
 - LuckFan: feat: 实现实训评分引擎、AI评判和协同摘要逻辑
 - NOONELIKEYOU8: refactor: 重构后端服务层架构，优化路由和依赖注入设计
+- ChenHaoyang1213: test: 添加后端API测试用例、健康检查接口和实训评分测试
