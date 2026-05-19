@@ -21,3 +21,5 @@
 - NOONELIKEYOU8: refactor: 重构后端服务层架构，优化路由和依赖注入设计
 - ChenHaoyang1213: test: 添加后端API测试用例、健康检查接口和实训评分测试
 - ChenHaoyang1213: chore: 添加启动脚本、批处理文件、MySQL建表和使用文档
+- NOONELIKEYOU8: Merge: 合并部署测试分支到develop
+- NOONELIKEYOU8: feat: 集成Topo-SCTB-Net图像分析模块用于景点识别和实训评估
