@@ -23,3 +23,4 @@
 - ChenHaoyang1213: chore: 添加启动脚本、批处理文件、MySQL建表和使用文档
 - NOONELIKEYOU8: Merge: 合并部署测试分支到develop
 - NOONELIKEYOU8: feat: 集成Topo-SCTB-Net图像分析模块用于景点识别和实训评估
+- NOONELIKEYOU8: fix: 修复跨域问题、Docker网络配置和前后端联调连接问题
