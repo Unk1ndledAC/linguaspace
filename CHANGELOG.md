@@ -26,3 +26,4 @@
 - NOONELIKEYOU8: fix: 修复跨域问题、Docker网络配置和前后端联调连接问题
 - ChenHaoyang1213: fix: 修复部署配置，更新环境变量和docker-compose网络设置
 - NOONELIKEYOU8: docs: 更新项目文档、演示步骤和已知问题清单
+- NOONELIKEYOU8: chore: 完善项目文件，补充剩余资源和配置文件
