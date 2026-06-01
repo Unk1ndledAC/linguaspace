@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import csv
 import json
 import re
 import uuid
 from datetime import datetime
-from pathlib import Path
 from threading import RLock
 from typing import Any
 from urllib.parse import unquote, urlparse
@@ -14,24 +12,6 @@ import pymysql
 
 from .config import settings
 from .embeddings import cosine, hash_embedding, tokens
-
-
-def _read_csv(name: str) -> list[dict[str, str]]:
-    path = settings.data_dir / f"{name}.csv"
-    if not path.exists():
-        return []
-    with path.open("r", encoding="utf-8-sig", newline="") as handle:
-        return list(csv.DictReader(handle))
-
-
-def _write_csv(name: str, rows: list[dict[str, Any]]) -> None:
-    path = settings.data_dir / f"{name}.csv"
-    if not rows:
-        return
-    with path.open("w", encoding="utf-8-sig", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
-        writer.writeheader()
-        writer.writerows(rows)
 
 
 def _split(value: str) -> list[str]:
@@ -70,20 +50,30 @@ class Store:
 
     def search_knowledge(self, query: str, top_k: int = 5) -> list[dict[str, Any]]:
         terms = [part for part in re.split(r"\W+", query.lower()) if part]
+        keyword_terms = [part for part in re.split(r"[\s,，|]+", query) if part]
+        graph_relations = self.graph_query(query)
+        graph_terms = {item["source"] for item in graph_relations} | {item["target"] for item in graph_relations}
+        graph_terms = {term for term in graph_terms if term and term not in keyword_terms}
         query_tokens = tokens(query)
         query_vector = hash_embedding(query)
-        scored: list[tuple[float, dict[str, str]]] = []
+        scored: list[tuple[float, dict[str, str], list[str], dict[str, float]]] = []
         for item in self.knowledge:
             haystack = f"{item.get('title', '')} {item.get('content', '')} {item.get('tags', '')}".lower()
-            score = sum(2 if term in item.get("title", "").lower() else 1 for term in terms if term in haystack)
+            keyword_score = sum(2 if term in item.get("title", "").lower() else 1 for term in terms if term in haystack)
             # Chinese queries often have no whitespace; reward direct title/tag occurrences.
-            score += sum(3 for tag in _split(item.get("tags", "")) if tag and tag in query)
+            keyword_score += sum(3 for tag in _split(item.get("tags", "")) if tag and tag in query)
+            match_terms = [term for term in keyword_terms if term and term in haystack]
+            keyword_score += len(match_terms) * 0.8
+            graph_matches = [term for term in graph_terms if term and term in haystack]
+            graph_score = len(graph_matches) * 1.1
             overlap = len(query_tokens & tokens(haystack))
-            if score or overlap:
+            if keyword_score or overlap or graph_score:
                 similarity = cosine(query_vector, hash_embedding(haystack))
-                scored.append((score + overlap * 1.5 + similarity, item))
+                total_score = keyword_score + overlap * 1.5 + similarity * 2.0 + graph_score
+                breakdown = {"keyword": keyword_score, "overlap": overlap, "vector": similarity, "graph": graph_score}
+                scored.append((total_score, item, match_terms + graph_matches, breakdown))
         scored.sort(key=lambda pair: pair[0], reverse=True)
-        return [self._knowledge_view(item, score) for score, item in scored[:top_k]]
+        return [self._knowledge_view(item, score, match_terms, breakdown) for score, item, match_terms, breakdown in scored[:top_k]]
 
     def add_knowledge(self, payload: dict[str, Any]) -> dict[str, Any]:
         with self.lock:
@@ -168,38 +158,40 @@ class Store:
         raise KeyError(item_id)
 
     @staticmethod
-    def _knowledge_view(item: dict[str, str], score: float | None = None) -> dict[str, Any]:
-        return {"id": item["id"], "title": item["title"], "snippet": item["content"], "content": item["content"], "tags": _split(item.get("tags", "")), "score": score}
+    def _knowledge_view(
+        item: dict[str, str],
+        score: float | None = None,
+        match_terms: list[str] | None = None,
+        score_breakdown: dict[str, float] | None = None,
+    ) -> dict[str, Any]:
+        return {
+            "id": item["id"],
+            "title": item["title"],
+            "snippet": item["content"],
+            "content": item["content"],
+            "tags": _split(item.get("tags", "")),
+            "score": score,
+            "match_terms": match_terms or [],
+            "score_breakdown": score_breakdown or {},
+        }
 
     def _connect(self):
         parsed = urlparse(settings.mysql_url.replace("mysql+pymysql://", "mysql://"))
-        return pymysql.connect(host=parsed.hostname or "127.0.0.1", port=parsed.port or 3306, user=unquote(parsed.username or "root"), password=unquote(parsed.password or ""), database=(parsed.path or "/linguaspace").lstrip("/"), charset="utf8mb4", cursorclass=pymysql.cursors.DictCursor, connect_timeout=1)
+        return pymysql.connect(host=parsed.hostname or "127.0.0.1", port=parsed.port or 3306, user=unquote(parsed.username or "linguaspace"), password=unquote(parsed.password or "linguaspace"), database=(parsed.path or "/linguaspace").lstrip("/"), charset="utf8mb4", cursorclass=pymysql.cursors.DictCursor, connect_timeout=3)
 
     def _load_table(self, name: str) -> list[dict[str, str]]:
-        if settings.data_backend == "mysql":
-            try:
-                with self._connect() as connection, connection.cursor() as cursor:
-                    cursor.execute(f"SELECT * FROM `{name}` ORDER BY 1")
-                    return [{key: "" if value is None else str(value) for key, value in row.items()} for row in cursor.fetchall()]
-            except Exception:
-                pass
-        return _read_csv(name)
+        with self._connect() as connection, connection.cursor() as cursor:
+            cursor.execute(f"SELECT * FROM `{name}` ORDER BY 1")
+            return [{key: "" if value is None else str(value) for key, value in row.items()} for row in cursor.fetchall()]
 
     def _persist(self, name: str, rows: list[dict[str, Any]]) -> None:
-        _write_csv(name, rows)
-        if settings.data_backend != "mysql":
-            return
-        try:
-            with self._connect() as connection, connection.cursor() as cursor:
-                cursor.execute(f"DELETE FROM `{name}`")
-                if rows:
-                    columns = list(rows[0])
-                    marks = ",".join(["%s"] * len(columns))
-                    cursor.executemany(f"INSERT INTO `{name}` ({','.join(f'`{item}`' for item in columns)}) VALUES ({marks})", [[row.get(column) or None for column in columns] for row in rows])
-                connection.commit()
-        except Exception:
-            # CSV remains the durable local fallback when MySQL is offline.
-            pass
+        with self._connect() as connection, connection.cursor() as cursor:
+            cursor.execute(f"DELETE FROM `{name}`")
+            if rows:
+                columns = list(rows[0])
+                marks = ",".join(["%s"] * len(columns))
+                cursor.executemany(f"INSERT INTO `{name}` ({','.join(f'`{item}`' for item in columns)}) VALUES ({marks})", [[row.get(column) or None for column in columns] for row in rows])
+            connection.commit()
 
 
 store = Store()

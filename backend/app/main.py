@@ -9,6 +9,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,7 +24,7 @@ from .providers import provider, timed_generate, vision_provider
 from .runtime_store import runtime
 from .scoring import score_training
 from .store import store
-from .translation import list_terms, translate
+from .translation import apply_glossary_to_zh, list_terms, translate
 
 app = FastAPI(title=settings.app_name, version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -167,60 +168,154 @@ def _tcp(host: str, port: int) -> dict[str, Any]:
         return {"ok": False, "host": host, "port": port, "error": str(exc)}
 
 
-def _prompt(question: str, sources: list[dict[str, Any]], graph: list[dict[str, str]]) -> str:
+INTEREST_KEYWORDS = {
+    "民族文化": ("民族", "白族", "彝族", "傣族", "摩梭", "纳西"),
+    "美食": ("美食", "小吃", "餐", "吃", "野生菌", "火锅"),
+    "历史": ("历史", "起源", "古城", "遗址", "朝代"),
+    "建筑": ("建筑", "民居", "照壁", "寺庙", "古镇"),
+    "非遗": ("非遗", "扎染", "紫陶", "三道茶"),
+}
+INTENT_KEYWORDS = {
+    "知识型": ("是什么", "为什么", "历史", "文化", "介绍"),
+    "求助型": ("怎么", "如何", "哪里", "能不能", "是否"),
+    "投诉型": ("投诉", "不好", "不满意", "失望"),
+    "消费型": ("价格", "票价", "购买", "预约", "消费"),
+}
+RISK_KEYWORDS = ("高反", "投诉", "受伤", "宗教", "禁忌", "边境", "执勤", "隐私", "安全")
+DYNAMIC_TERMS = ("开放时间", "票价", "价格", "预约", "政策", "天气")
+
+
+def _infer_profile(question: str) -> dict[str, Any]:
+    interests = [label for label, terms in INTEREST_KEYWORDS.items() if any(term in question for term in terms)]
+    intent_types = [label for label, terms in INTENT_KEYWORDS.items() if any(term in question for term in terms)]
+    risk_level = "high" if any(term in question for term in RISK_KEYWORDS) else "normal"
+    if any(term in question for term in ("到达", "到了", "抵达", "入住")):
+        visit_status = "到达"
+    elif any(term in question for term in ("离开", "返程", "回去", "结束")):
+        visit_status = "离开"
+    else:
+        visit_status = "游览中"
+    return {
+        "interests": interests or ["综合"],
+        "intent_types": intent_types or ["知识型"],
+        "risk_level": risk_level,
+        "visit_status": visit_status,
+    }
+
+
+def _dynamic_hint(question: str) -> bool:
+    return any(term in question for term in DYNAMIC_TERMS)
+
+
+def _find_reference_answers(scene: str, question: str) -> str:
+    for item in store.scenarios:
+        if item.get("scene") == scene or item.get("question") == question:
+            return str(item.get("reference_answers") or "")
+    return ""
+
+
+def _mysql_host_port() -> tuple[str, int]:
+    parsed = urlparse(settings.mysql_url)
+    host = parsed.hostname or "127.0.0.1"
+    port = parsed.port or 3306
+    return host, port
+
+
+def _prompt(question: str, sources: list[dict[str, Any]], graph: list[dict[str, str]], dynamic_hint: bool = False) -> str:
     context = "\n".join(f"- {item['title']}：{item['snippet']}" for item in sources)
     relations = "\n".join(f"- {item['source']} → {item['relation']} → {item['target']}" for item in graph[:12])
+    dynamic_note = "动态信息需提醒以现场公告为准。" if dynamic_hint else ""
     return f"""你是语界 LinguaSpace 的云南文旅导览助手。只能基于给定的已审核资料回答，不要编造。
 游客问题：{question}
 知识库资料：
 {context}
 文化关系：
 {relations or "无补充关系"}
+{dynamic_note}
 请用自然、简洁、友好的中文回答，并在动态信息处提醒以现场公告为准。"""
 
 
-def _answer(question: str, session_id: str | None = None, input_type: str = "text") -> dict[str, Any]:
+def _answer(question: str, session_id: str | None = None, input_type: str = "text", language: str = "zh", location: str | None = None) -> dict[str, Any]:
     if not session_id:
-        session_id = runtime.create_session()["id"]
+        session_id = runtime.create_session(language, location)["id"]
+    question = question.strip()
     runtime.record_message(session_id, "user", input_type, question=question)
-    sources = store.search_knowledge(question, 5)
-    if not sources:
+    normalized = apply_glossary_to_zh(question, language)
+    search_question = normalized["text"]
+    sources = store.search_knowledge(search_question, 5)
+    max_score = max((item.get("score") or 0) for item in sources) if sources else 0
+    reliable = len(sources) >= settings.rag_min_sources and max_score >= settings.rag_min_score
+    if not reliable:
         answer = "暂无可靠资料。建议补充景点名称或联系现场导游确认。"
         runtime.record_message(session_id, "assistant", input_type, answer=answer, reliable=False, provider="none")
-        return {"session_id": session_id, "answer": answer, "sources": [], "provider": "none", "model": None, "reliable": False}
-    graph = store.graph_query(question)
-    cached = cache.get(f"answer:{question}")
+        profile = _infer_profile(question)
+        runtime.upsert_profile(session_id, language, profile["interests"], profile["intent_types"], profile["visit_status"], profile["risk_level"], question)
+        runtime.log_request_trace(
+            session_id,
+            question,
+            language,
+            {"search_question": search_question, "max_score": max_score, "min_score": settings.rag_min_score, "sources": len(sources), "reliable": False, "profile": profile, "glossary_hits": normalized.get("term_hits", [])},
+        )
+        return {
+            "session_id": session_id,
+            "answer": answer,
+            "sources": [],
+            "provider": "none",
+            "model": None,
+            "reliable": False,
+            "retrieval": {"max_score": max_score, "min_score": settings.rag_min_score, "sources": len(sources), "search_question": search_question},
+        }
+    graph = store.graph_query(search_question)
+    cached = cache.get(f"answer:{search_question}")
     if cached:
         answer, latency, model, mode = cached["answer"], 0, cached["model"], "cache"
     else:
-        try:
-            answer, latency = timed_generate(_prompt(question, sources, graph))
-            model = provider.model
-            mode = provider.name
-            runtime.log_model("llm", mode, model, question, latency)
-            cache.set(f"answer:{question}", {"answer": answer, "model": model})
-        except Exception as exc:
-            answer = "根据已审核资料：" + "；".join(item["snippet"] for item in sources[:2])
-            latency = 0
-            model = provider.model
-            mode = "rag-fallback"
-            store.logs.append({"type": "llm_error", "error": str(exc), "created_at": datetime.now().isoformat()})
-            runtime.log_model("llm", mode, model, question, latency, "failed", str(exc))
+        answer, latency = timed_generate(_prompt(search_question, sources, graph, _dynamic_hint(question)))
+        model = provider.model
+        mode = provider.name
+        runtime.log_model("llm", mode, model, question, latency)
+        cache.set(f"answer:{search_question}", {"answer": answer, "model": model})
     record = {"id": uuid.uuid4().hex, "question": question, "answer": answer, "sources": sources, "provider": mode, "model": model, "latency_ms": latency, "created_at": datetime.now().isoformat()}
     store.logs.append(record)
     runtime.record_message(session_id, "assistant", input_type, answer=answer, sources=sources, reliable=True, model=model, provider=mode)
-    return {"session_id": session_id, **record, "reliable": True, "graph": graph}
+    profile = _infer_profile(question)
+    runtime.upsert_profile(session_id, language, profile["interests"], profile["intent_types"], profile["visit_status"], profile["risk_level"], question)
+    runtime.log_request_trace(
+        session_id,
+        question,
+        language,
+        {
+            "search_question": search_question,
+            "max_score": max_score,
+            "min_score": settings.rag_min_score,
+            "sources": len(sources),
+            "graph": len(graph),
+            "provider": mode,
+            "model": model,
+            "latency_ms": latency,
+            "profile": profile,
+            "glossary_hits": normalized.get("term_hits", []),
+        },
+    )
+    response = {"session_id": session_id, **record, "reliable": True, "graph": graph, "retrieval": {"max_score": max_score, "min_score": settings.rag_min_score, "sources": len(sources), "search_question": search_question}}
+    if language not in ("zh", "zh-CN", "中文"):
+        translated = translate(answer, language)
+        response["translated_answer"] = translated["text"]
+        response["translation_note"] = translated.get("note", "")
+        response["term_hits"] = translated.get("term_hits", [])
+    return response
 
 
 @app.get("/api/health")
 def health() -> dict[str, Any]:
     models = vision_provider.tags()
+    mysql_host, mysql_port = _mysql_host_port()
     return {
         "status": "ok",
         "app": settings.app_name,
         "components": {
             "api": {"ok": True},
-            "mysql": {**_tcp("127.0.0.1", 3306), "runtime_store": runtime.mysql_ok},
+            "mysql": {**_tcp(mysql_host, mysql_port), "runtime_store": runtime.mysql_ok},
             "postgres_pgvector": _tcp("127.0.0.1", 5432),
             "redis": _tcp("127.0.0.1", 6379),
             "minio": _tcp("127.0.0.1", 9000),
@@ -228,7 +323,7 @@ def health() -> dict[str, Any]:
             "llm": {"ok": provider.name == "openai-compatible" or provider.model in models, "provider": provider.name, "model": provider.model, "available_models": provider.tags()},
             "vision": {"ok": settings.ollama_vision_model in models, "model": settings.ollama_vision_model},
             "tts": {"ok": os.name == "nt", "engine": "Windows SAPI"},
-            "asr": {"ok": True, "engine": "faster-whisper" if server_asr_available() else "Browser SpeechRecognition", "server_asr": server_asr_available(), "fallback": "Browser SpeechRecognition"},
+            "asr": {"ok": server_asr_available(), "engine": "faster-whisper", "server_asr": server_asr_available()},
             "cache_adapter": {"ok": True, "backend": cache.backend},
             "object_storage_adapter": {"ok": True, "backend": objects.backend},
             "graph_adapter": {"ok": True, "backend": graph_mirror.backend},
@@ -238,7 +333,7 @@ def health() -> dict[str, Any]:
 
 @app.get("/api/architecture/audit")
 def architecture_audit() -> dict[str, Any]:
-    return {"status": "single-machine-complete-loop", "layers": [{"name": "客户端层", "ok": True, "items": ["四端独立入口"]}, {"name": "业务服务层", "ok": True, "items": ["导览", "实训", "协同", "审核", "日志"]}, {"name": "AI能力层", "ok": True, "items": ["Ollama LLM", "Ollama Vision", "ASR adapter", "TTS", "translation adapter"]}, {"name": "知识增强层", "ok": True, "items": ["RAG", "术语表", "文化图谱"]}, {"name": "数据与运维层", "ok": True, "items": ["MySQL", "CSV 镜像", "Docker Compose", "健康监测"]}], "notes": ["MySQL 为优先运行存储，CSV 为可编辑镜像和离线兜底。", "PostgreSQL/pgvector、Redis、MinIO、Neo4j 作为可选增强组件由 Docker Compose 拉起。"]}
+    return {"status": "acceptance-ready", "layers": [{"name": "客户端层", "ok": True, "items": ["四端独立入口"]}, {"name": "业务服务层", "ok": True, "items": ["导览", "实训", "协同", "审核", "日志"]}, {"name": "AI能力层", "ok": True, "items": ["Ollama LLM", "Ollama Vision", "ASR adapter", "TTS", "translation adapter"]}, {"name": "知识增强层", "ok": True, "items": ["RAG", "术语表", "文化图谱", "Neo4j 镜像"]}, {"name": "数据与运维层", "ok": True, "items": ["MySQL", "PostgreSQL/pgvector", "Redis", "MinIO", "Neo4j", "Docker Compose", "健康监测"]}], "notes": ["启动脚本一次性拉起 Docker 基础设施并校验 Ollama 模型。", "MySQL、Redis、MinIO、Neo4j 不再降级；任一关键服务不可用则启动或请求失败。"]}
 
 
 @app.post("/api/auth/login")
@@ -280,6 +375,14 @@ def sessions() -> dict[str, Any]:
     return {"items": runtime.list_sessions()}
 
 
+@app.get("/api/sessions/{session_id}/profile")
+def session_profile(session_id: str) -> dict[str, Any]:
+    profile = runtime.get_profile(session_id)
+    if not profile:
+        raise HTTPException(404, "profile not found")
+    return {"profile": profile}
+
+
 @app.get("/api/collaboration/sessions")
 def collaboration_sessions() -> dict[str, Any]:
     return {"items": runtime.list_sessions()}
@@ -302,7 +405,7 @@ def collaboration_cases() -> dict[str, Any]:
 
 @app.post("/api/chat")
 def chat(payload: ChatRequest) -> dict[str, Any]:
-    return _answer(payload.question.strip(), payload.session_id)
+    return _answer(payload.question.strip(), payload.session_id, language=payload.language, location=payload.location)
 
 
 @app.post("/api/chat/stream")
@@ -310,28 +413,44 @@ def chat_stream(payload: ChatRequest) -> StreamingResponse:
     question = payload.question.strip()
     session_id = payload.session_id or runtime.create_session(payload.language, payload.location)["id"]
     runtime.record_message(session_id, "user", "text", question=question)
-    sources = store.search_knowledge(question, 5)
-    if not sources:
+    normalized = apply_glossary_to_zh(question, payload.language)
+    search_question = normalized["text"]
+    sources = store.search_knowledge(search_question, 5)
+    max_score = max((item.get("score") or 0) for item in sources) if sources else 0
+    reliable = len(sources) >= settings.rag_min_sources and max_score >= settings.rag_min_score
+    if not reliable:
         answer = "暂无可靠资料。建议补充景点名称或联系现场导游确认。"
         runtime.record_message(session_id, "assistant", "text", answer=answer, reliable=False, provider="none")
+        profile = _infer_profile(question)
+        runtime.upsert_profile(session_id, payload.language, profile["interests"], profile["intent_types"], profile["visit_status"], profile["risk_level"], question)
+        runtime.log_request_trace(
+            session_id,
+            question,
+            payload.language,
+            {"search_question": search_question, "max_score": max_score, "min_score": settings.rag_min_score, "sources": len(sources), "reliable": False, "profile": profile, "glossary_hits": normalized.get("term_hits", [])},
+        )
         return StreamingResponse(iter([answer]), media_type="text/plain; charset=utf-8", headers={"X-LinguaSpace-Session": session_id})
-    prompt = _prompt(question, sources, store.graph_query(question))
+    graph = store.graph_query(search_question)
+    prompt = _prompt(search_question, sources, graph, _dynamic_hint(question))
 
     def generate():
         chunks: list[str] = []
         started = datetime.now()
-        try:
-            for chunk in provider.stream(prompt):
-                chunks.append(chunk)
-                yield chunk
-            answer = "".join(chunks)
-            elapsed = round((datetime.now() - started).total_seconds() * 1000)
-            runtime.log_model("llm-stream", provider.name, provider.model, question, elapsed)
-        except Exception as exc:
-            answer = "根据已审核资料：" + "；".join(item["snippet"] for item in sources[:2])
-            yield answer
-            runtime.log_model("llm-stream", "rag-fallback", provider.model, question, 0, "failed", str(exc))
+        for chunk in provider.stream(prompt):
+            chunks.append(chunk)
+            yield chunk
+        answer = "".join(chunks)
+        elapsed = round((datetime.now() - started).total_seconds() * 1000)
+        runtime.log_model("llm-stream", provider.name, provider.model, question, elapsed)
         runtime.record_message(session_id, "assistant", "text", answer=answer, sources=sources, reliable=True, model=provider.model, provider=provider.name)
+        profile = _infer_profile(question)
+        runtime.upsert_profile(session_id, payload.language, profile["interests"], profile["intent_types"], profile["visit_status"], profile["risk_level"], question)
+        runtime.log_request_trace(
+            session_id,
+            question,
+            payload.language,
+            {"search_question": search_question, "max_score": max_score, "min_score": settings.rag_min_score, "sources": len(sources), "graph": len(graph), "provider": provider.name, "model": provider.model, "latency_ms": elapsed, "profile": profile, "glossary_hits": normalized.get("term_hits", [])},
+        )
 
     return StreamingResponse(generate(), media_type="text/plain; charset=utf-8", headers={"X-LinguaSpace-Sources": str(len(sources)), "X-LinguaSpace-Session": session_id})
 
@@ -437,7 +556,8 @@ def delete_training_scenario(scenario_id: str, _: dict = Depends(require_roles("
 @app.post("/api/training/score")
 def training_score(payload: TrainingInput) -> dict[str, Any]:
     started = time.perf_counter()
-    report = score_training(payload.scenario, payload.question, payload.answer)
+    reference_answers = _find_reference_answers(payload.scenario, payload.question)
+    report = score_training(payload.scenario, payload.question, payload.answer, reference_answers)
     runtime.log_model("training-judge", report["judge_mode"], provider.model, f"{payload.question}\n{payload.answer}", round((time.perf_counter() - started) * 1000))
     record = runtime.add_training_record(payload.scenario, payload.question, payload.answer, report)
     return {**report, "record_id": record["id"]}
@@ -489,6 +609,14 @@ def review_decision(task_id: str, payload: ReviewDecisionInput, _: dict = Depend
 def model_logs(capability: str = "", status: str = "", _: dict = Depends(require_roles("admin"))) -> dict[str, Any]:
     items = runtime._all("model_call_logs")
     return {"items": [item for item in items if (not capability or item["capability"] == capability) and (not status or item["status"] == status)]}
+
+
+@app.get("/api/logs/request-traces")
+def request_traces(session_id: str = "", _: dict = Depends(require_roles("admin"))) -> dict[str, Any]:
+    items = runtime._all("request_traces")
+    if session_id:
+        items = [item for item in items if item.get("session_id") == session_id]
+    return {"items": items}
 
 
 @app.get("/api/terms")
@@ -567,7 +695,7 @@ async def image_ask(file: UploadFile = File(...), question: str = Form("请介�
     except Exception as exc:
         runtime.log_model("vision", "ollama", settings.ollama_vision_model, vision_prompt, 0, "failed", str(exc))
         raise HTTPException(503, f"vision model unavailable: {exc}")
-    answer = _answer(f"{summary} {question}")
+    answer = _answer(f"{summary} {question}", language="zh")
     return {"upload": upload, "vision_summary": summary, **answer}
 
 
@@ -584,7 +712,7 @@ async def audio_transcribe(file: UploadFile = File(...)) -> dict[str, Any]:
     path = Path(upload["local_path"])
     started = time.perf_counter()
     result = transcribe(path)
-    runtime.log_model("asr", result["engine"], "small", file.filename or "", round((time.perf_counter() - started) * 1000), "success" if result.get("available") else "degraded", result.get("message", ""))
+    runtime.log_model("asr", result["engine"], "small", file.filename or "", round((time.perf_counter() - started) * 1000), "success" if result.get("available") else "failed", result.get("message", ""))
     return {"audio_url": upload["url"], "storage": upload["backend"], **result}
 
 
@@ -595,14 +723,15 @@ async def audio_ask(file: UploadFile = File(...)) -> dict[str, Any]:
     path = Path(upload["local_path"])
     transcript = transcribe(path)
     if not transcript.get("text"):
-        return {"audio_url": upload["url"], "transcript": transcript, "answer": "语音识别暂不可用，请在游客端使用浏览器实时语音输入或改用文字提问。", "sources": [], "reliable": False}
-    return {"audio_url": upload["url"], "transcript": transcript, **_answer(str(transcript["text"]), input_type="audio")}
+        raise HTTPException(503, "server ASR unavailable or failed to transcribe audio")
+    return {"audio_url": upload["url"], "transcript": transcript, **_answer(str(transcript["text"]), input_type="audio", language=transcript.get("language", "zh"))}
 
 
 @app.post("/api/collaboration/summary")
 def collaboration_summary(payload: CollaborationInput) -> dict[str, Any]:
     summary = f"游客问题：{payload.question}\nAI 回答摘要：{payload.ai_answer[:240] or '尚无'}\n导游备注：{payload.guide_note or '尚无'}"
-    return {"summary": summary, "risk_level": "high" if any(term in payload.question for term in ("高反", "投诉", "受伤", "宗教", "禁忌")) else "normal"}
+    profile = _infer_profile(payload.question)
+    return {"summary": summary, "risk_level": profile["risk_level"], "intent_types": profile["intent_types"], "interests": profile["interests"]}
 
 
 @app.post("/api/collaboration/correction")

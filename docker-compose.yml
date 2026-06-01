@@ -1,5 +1,19 @@
 name: linguaspace
 services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-linguaspace}
+      MYSQL_USER: ${MYSQL_USER:-linguaspace}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-linguaspace}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-linguaspace-root}
+    ports: ["3307:3306"]
+    volumes: [mysql-data:/var/lib/mysql]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -ulinguaspace -plinguaspace --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
   postgres:
     image: pgvector/pgvector:pg16
     environment:
@@ -8,9 +22,19 @@ services:
       POSTGRES_PASSWORD: linguaspace
     ports: ["5432:5432"]
     volumes: [postgres-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U linguaspace -d linguaspace"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
   redis:
     image: redis:7-alpine
     ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
   minio:
     image: minio/minio
     command: server /data --console-address ":9001"
@@ -19,13 +43,24 @@ services:
       MINIO_ROOT_PASSWORD: linguaspace-local
     ports: ["9000:9000", "9001:9001"]
     volumes: [minio-data:/data]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
   neo4j:
     image: neo4j:5-community
     environment:
       NEO4J_AUTH: neo4j/linguaspace
     ports: ["7474:7474", "7687:7687"]
     volumes: [neo4j-data:/data]
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://127.0.0.1:7474 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
 volumes:
+  mysql-data:
   postgres-data:
   minio-data:
   neo4j-data:

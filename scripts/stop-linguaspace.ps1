@@ -8,4 +8,5 @@ foreach ($name in "api.pid","web.pid") {
     Remove-Item $path -Force
   }
 }
-Write-Host "LinguaSpace stopped"
+& docker compose -f (Join-Path $root "docker-compose.yml") down
+Write-Host "LinguaSpace stopped, Docker infrastructure stopped"

@@ -22,18 +22,22 @@ TABLES = {
 
 def main() -> None:
     host = os.getenv("MYSQL_HOST", "127.0.0.1")
-    user = os.getenv("MYSQL_USER", "root")
-    password = os.getenv("MYSQL_PASSWORD", "")
+    port = int(os.getenv("MYSQL_PORT", "3307"))
+    user = os.getenv("MYSQL_USER", "linguaspace")
+    password = os.getenv("MYSQL_PASSWORD", "linguaspace")
     database = os.getenv("MYSQL_DATABASE", "linguaspace")
-    connection = pymysql.connect(host=host, user=user, password=password, charset="utf8mb4")
+    force_bootstrap = os.getenv("BOOTSTRAP_FORCE", "").lower() in ("1", "true", "yes")
+    connection = pymysql.connect(host=host, port=port, user=user, password=password, charset="utf8mb4")
     with connection, connection.cursor() as cursor:
         cursor.execute(f"CREATE DATABASE IF NOT EXISTS `{database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
         cursor.execute(f"USE `{database}`")
         for table, columns in TABLES.items():
             cursor.execute(f"CREATE TABLE IF NOT EXISTS `{table}` ({columns})")
             cursor.execute(f"SELECT COUNT(*) FROM `{table}`")
-            if cursor.fetchone()[0]:
+            if cursor.fetchone()[0] and not force_bootstrap:
                 continue
+            if force_bootstrap:
+                cursor.execute(f"DELETE FROM `{table}`")
             with (CSV_DIR / f"{table}.csv").open("r", encoding="utf-8-sig", newline="") as handle:
                 rows = list(csv.DictReader(handle))
             if rows:

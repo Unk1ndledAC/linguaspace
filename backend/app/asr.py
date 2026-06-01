@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from importlib.util import find_spec
 from pathlib import Path
 from typing import Any
 
@@ -9,7 +8,12 @@ from .config import settings
 
 
 def server_asr_available() -> bool:
-    return find_spec("faster_whisper") is not None
+    try:
+        from faster_whisper import WhisperModel  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
 
 
 def normalize_transcript(text: str) -> str:
@@ -37,7 +41,7 @@ def transcribe(path: Path) -> dict[str, Any]:
         segments, info = _model().transcribe(str(path), beam_size=3)
         raw_text = "".join(segment.text for segment in segments).strip()
         return {"text": normalize_transcript(raw_text), "raw_text": raw_text, "language": info.language, "engine": "faster-whisper", "available": True}
-    except ImportError:
-        return {"text": "", "language": None, "engine": "browser-asr-preferred", "available": False, "message": "未安装 faster-whisper，前端可使用浏览器实时 ASR。"}
+    except ImportError as exc:
+        raise RuntimeError("faster-whisper is required for server ASR") from exc
     except Exception as exc:
-        return {"text": "", "language": None, "engine": "faster-whisper", "available": False, "message": str(exc)}
+        raise RuntimeError(f"server ASR failed: {exc}") from exc

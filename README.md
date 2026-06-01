@@ -1,6 +1,6 @@
 # 语界 LinguaSpace
 
-语界是面向云南文旅场景的单机可运行系统，包含游客端、学生端、导游端和管理端。当前版本使用本机 Ollama 提供 LLM 与视觉模型能力，CSV 文件作为可扩展种子数据，支持同步导入 MySQL。
+语界是面向云南文旅场景的单机可运行系统，包含游客端、学生端、导游端和管理端。当前版本按最终验收口径启动：Docker 基础设施、MySQL、PostgreSQL/pgvector、Redis、MinIO、Neo4j 与本机 Ollama 模型必须真实可用，不做离线或本地模拟降级。
 
 ## 一键启动
 
@@ -9,7 +9,7 @@
 - Python 3.10+
 - Node.js 18+
 - Ollama，已安装 `qwen3.5:0.8b` 与 `qwen3-vl:4b`
-- 可选：Docker Desktop，用于 PostgreSQL/pgvector、Redis、MinIO、Neo4j
+- Docker Desktop，用于一次性拉起 MySQL、PostgreSQL/pgvector、Redis、MinIO、Neo4j
 
 双击 `start-linguaspace.bat`，或执行：
 
@@ -17,15 +17,15 @@
 .\scripts\start-linguaspace.ps1
 ```
 
-启动脚本会自动读取根目录 `.env`。如需开启本机 Whisper、Redis/MinIO/Neo4j 适配器或角色鉴权，可先从 `.env.example` 复制一份 `.env`，再启用对应开关。开启 `ENFORCE_AUTH=true` 后，管理写操作和导游接管接口需要携带登录接口签发的 Bearer Token。
+启动脚本会自动读取根目录 `.env`，然后强制执行完整启动链路：`docker compose up -d` 拉起基础设施，等待 MySQL/PostgreSQL/Redis/MinIO/Neo4j/Ollama 可连接，校验 `OLLAMA_MODEL` 与 `OLLAMA_VISION_MODEL` 已安装，初始化 MySQL 种子数据，最后启动 FastAPI 与前端。任一关键依赖不可用时启动会直接失败。开启 `ENFORCE_AUTH=true` 后，管理写操作和导游接管接口需要携带登录接口签发的 Bearer Token。
 
-访问地址：
+访问地址（前端端口会自动选择空闲端口，以下以 5186 为例，实际以启动输出为准）：
 
-- 品牌介绍页：http://localhost:5173
-- 游客端：http://localhost:5173/visitor
-- 学生端：http://localhost:5173/student
-- 导游端：http://localhost:5173/guide
-- 管理端：http://localhost:5173/admin
+- 品牌介绍页：http://localhost:5186
+- 游客端：http://localhost:5186/visitor
+- 学生端：http://localhost:5186/student
+- 导游端：http://localhost:5186/guide
+- 管理端：http://localhost:5186/admin
 - API 文档：http://localhost:8000/docs
 - 健康检查：http://localhost:8000/api/health
 
@@ -45,15 +45,21 @@
 python .\scripts\import_csv_to_mysql.py
 ```
 
-本机默认 MySQL 配置为 `root` 用户、空密码、数据库 `linguaspace`。
+若需要强制用 CSV 重新覆盖 MySQL（例如更新图谱语义关系），可先设置：
 
-## 可选基础设施
+```powershell
+$env:BOOTSTRAP_FORCE="1"
+```
+
+本机默认 MySQL 配置为 `linguaspace` 用户、密码 `linguaspace`、数据库 `linguaspace`，由 `docker-compose.yml` 中的 MySQL 容器提供。若 3306 已被占用，会映射到 3307。若 MySQL root 密码不是 `linguaspace-root`，请在 `.env` 或环境变量中设置 `MYSQL_ROOT_PASSWORD`。
+
+## 基础设施
 
 ```powershell
 docker compose up -d
 ```
 
-该命令拉起 PostgreSQL/pgvector、Redis、MinIO 和 Neo4j。单机演示在这些组件未启动时仍可使用 CSV 数据和本机 Ollama 运行核心闭环。
+该命令拉起 MySQL、PostgreSQL/pgvector、Redis、MinIO 和 Neo4j。一键启动脚本会自动执行该命令并做端口与模型校验；后端不再使用 CSV、内存缓存、本地文件或 MySQL/CSV 图谱作为运行时降级链路。
 
 ## 验证
 
@@ -76,7 +82,9 @@ npm run build
 当前 FastAPI 后端实现完整单机闭环：
 
 - 文本 RAG 问答、流式输出、无资料拒答、来源追踪和会话消息持久化。
-- Ollama 文本模型、Ollama 视觉模型、可选 `faster-whisper` ASR、浏览器 ASR 降级、Windows SAPI TTS。
+- 混合检索（向量 + 关键词 + 图谱语义扩展）与可解释的检索得分。
+- 图谱语义增强：讲解关系、游客类型适配、禁忌/风险提示、时空属性。
+- Ollama 文本模型、Ollama 视觉模型、`faster-whisper` ASR、Windows SAPI TTS。
 - OpenAI-compatible 文本 Provider，可通过环境变量切换 DeepSeek、Qwen 等云端 API。
 - 知识文档上传、分片、待审核、通过发布、退回与下线。
 - 文化知识图谱查询与 CRUD、路线推荐、术语表与基础多语一致性替换。

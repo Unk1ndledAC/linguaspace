@@ -17,9 +17,9 @@ class Settings:
     openai_compatible_base_url: str = os.getenv("OPENAI_COMPATIBLE_BASE_URL", "")
     openai_compatible_api_key: str = os.getenv("OPENAI_COMPATIBLE_API_KEY", "")
     openai_compatible_model: str = os.getenv("OPENAI_COMPATIBLE_MODEL", "")
-    mysql_url: str = os.getenv("MYSQL_URL", "mysql+pymysql://root@127.0.0.1:3306/linguaspace")
-    data_backend: str = os.getenv("DATA_BACKEND", "mysql")
-    runtime_backend: str = os.getenv("RUNTIME_BACKEND", "mysql")
+    mysql_url: str = os.getenv("MYSQL_URL", "mysql+pymysql://linguaspace:linguaspace@127.0.0.1:3307/linguaspace")
+    rag_min_score: float = float(os.getenv("RAG_MIN_SCORE", "1.0"))
+    rag_min_sources: int = int(os.getenv("RAG_MIN_SOURCES", "1"))
     enable_llm_judge: bool = os.getenv("ENABLE_LLM_JUDGE", "true").lower() == "true"
     whisper_model: str = os.getenv("WHISPER_MODEL", "small")
     enforce_auth: bool = os.getenv("ENFORCE_AUTH", "false").lower() == "true"

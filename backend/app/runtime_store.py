@@ -66,6 +66,13 @@ SCHEMA = [
     """CREATE TABLE IF NOT EXISTS feedback (
         id VARCHAR(64) PRIMARY KEY, message_id VARCHAR(64), rating INT,
         content TEXT, status VARCHAR(24), created_at VARCHAR(40) NOT NULL)""",
+    """CREATE TABLE IF NOT EXISTS visitor_profiles (
+        session_id VARCHAR(64) PRIMARY KEY, language VARCHAR(24),
+        interests_json TEXT, intent_types_json TEXT, visit_status VARCHAR(24),
+        risk_level VARCHAR(24), last_question TEXT, updated_at VARCHAR(40) NOT NULL)""",
+    """CREATE TABLE IF NOT EXISTS request_traces (
+        id VARCHAR(64) PRIMARY KEY, session_id VARCHAR(64), question TEXT,
+        language VARCHAR(24), pipeline_json LONGTEXT, created_at VARCHAR(40) NOT NULL)""",
 ]
 
 
@@ -76,67 +83,41 @@ def _now() -> str:
 class RuntimeStore:
     def __init__(self) -> None:
         self.lock = RLock()
-        self.memory = {name: [] for name in ("users", "guide_sessions", "messages", "model_call_logs", "review_tasks", "terms", "training_records", "guide_corrections", "feedback")}
         self.mysql_ok = self._ensure_schema()
         self._seed_users()
         self._seed_terms()
 
     def _ensure_schema(self) -> bool:
-        if settings.runtime_backend != "mysql":
-            return False
-        try:
-            with store._connect() as connection, connection.cursor() as cursor:
-                for statement in SCHEMA:
-                    cursor.execute(statement)
-                connection.commit()
-            return True
-        except Exception:
-            return False
+        with store._connect() as connection, connection.cursor() as cursor:
+            for statement in SCHEMA:
+                cursor.execute(statement)
+            connection.commit()
+        return True
 
     def _all(self, table: str, limit: int = 200) -> list[dict[str, Any]]:
-        if self.mysql_ok:
-            try:
-                with store._connect() as connection, connection.cursor() as cursor:
-                    cursor.execute(f"SELECT * FROM `{table}` ORDER BY created_at DESC LIMIT %s", (limit,))
-                    return list(cursor.fetchall())
-            except Exception:
-                self.mysql_ok = False
-        return list(reversed(self.memory[table][-limit:]))
+        with store._connect() as connection, connection.cursor() as cursor:
+            cursor.execute(f"SELECT * FROM `{table}` ORDER BY created_at DESC LIMIT %s", (limit,))
+            return list(cursor.fetchall())
 
     def _insert(self, table: str, item: dict[str, Any]) -> dict[str, Any]:
         with self.lock:
-            if self.mysql_ok:
-                try:
-                    with store._connect() as connection, connection.cursor() as cursor:
-                        columns = list(item)
-                        marks = ",".join(["%s"] * len(columns))
-                        cursor.execute(f"INSERT INTO `{table}` ({','.join(f'`{key}`' for key in columns)}) VALUES ({marks})", list(item.values()))
-                        connection.commit()
-                        return item
-                except Exception:
-                    self.mysql_ok = False
-            self.memory[table].append(item)
-            return item
+            with store._connect() as connection, connection.cursor() as cursor:
+                columns = list(item)
+                marks = ",".join(["%s"] * len(columns))
+                cursor.execute(f"INSERT INTO `{table}` ({','.join(f'`{key}`' for key in columns)}) VALUES ({marks})", list(item.values()))
+                connection.commit()
+                return item
 
     def _update(self, table: str, item_id: str, changes: dict[str, Any]) -> dict[str, Any]:
-        if self.mysql_ok:
-            with store._connect() as connection, connection.cursor() as cursor:
-                cursor.execute(f"UPDATE `{table}` SET {','.join(f'`{key}`=%s' for key in changes)} WHERE id=%s", [*changes.values(), item_id])
-                connection.commit()
-            return {"id": item_id, **changes}
-        for item in self.memory[table]:
-            if item["id"] == item_id:
-                item.update(changes)
-                return item
-        raise KeyError(item_id)
+        with store._connect() as connection, connection.cursor() as cursor:
+            cursor.execute(f"UPDATE `{table}` SET {','.join(f'`{key}`=%s' for key in changes)} WHERE id=%s", [*changes.values(), item_id])
+            connection.commit()
+        return {"id": item_id, **changes}
 
     def _delete(self, table: str, item_id: str) -> None:
-        if self.mysql_ok:
-            with store._connect() as connection, connection.cursor() as cursor:
-                cursor.execute(f"DELETE FROM `{table}` WHERE id=%s", (item_id,))
-                connection.commit()
-            return
-        self.memory[table] = [item for item in self.memory[table] if item["id"] != item_id]
+        with store._connect() as connection, connection.cursor() as cursor:
+            cursor.execute(f"DELETE FROM `{table}` WHERE id=%s", (item_id,))
+            connection.commit()
 
     def _seed_users(self) -> None:
         if self._all("users"):
@@ -234,6 +215,59 @@ class RuntimeStore:
 
     def add_feedback(self, message_id: str, rating: int, content: str) -> dict[str, Any]:
         return self._insert("feedback", {"id": uuid.uuid4().hex, "message_id": message_id, "rating": rating, "content": content, "status": "open", "created_at": _now()})
+
+    def upsert_profile(self, session_id: str, language: str, interests: list[str], intent_types: list[str], visit_status: str, risk_level: str, last_question: str) -> dict[str, Any]:
+        payload = {
+            "session_id": session_id,
+            "language": language,
+            "interests_json": json.dumps(sorted(set(interests)), ensure_ascii=False),
+            "intent_types_json": json.dumps(sorted(set(intent_types)), ensure_ascii=False),
+            "visit_status": visit_status,
+            "risk_level": risk_level,
+            "last_question": last_question,
+            "updated_at": _now(),
+        }
+        with store._connect() as connection, connection.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO visitor_profiles (session_id, language, interests_json, intent_types_json, visit_status, risk_level, last_question, updated_at)
+                VALUES (%(session_id)s, %(language)s, %(interests_json)s, %(intent_types_json)s, %(visit_status)s, %(risk_level)s, %(last_question)s, %(updated_at)s)
+                ON DUPLICATE KEY UPDATE
+                  language=VALUES(language),
+                  interests_json=VALUES(interests_json),
+                  intent_types_json=VALUES(intent_types_json),
+                  visit_status=VALUES(visit_status),
+                  risk_level=VALUES(risk_level),
+                  last_question=VALUES(last_question),
+                  updated_at=VALUES(updated_at)
+                """,
+                payload,
+            )
+            connection.commit()
+        return payload
+
+    def get_profile(self, session_id: str) -> dict[str, Any] | None:
+        with store._connect() as connection, connection.cursor() as cursor:
+            cursor.execute("SELECT * FROM visitor_profiles WHERE session_id=%s", (session_id,))
+            row = cursor.fetchone()
+        if not row:
+            return None
+        row["interests_json"] = json.loads(row.get("interests_json") or "[]")
+        row["intent_types_json"] = json.loads(row.get("intent_types_json") or "[]")
+        return row
+
+    def log_request_trace(self, session_id: str, question: str, language: str, pipeline: dict[str, Any]) -> dict[str, Any]:
+        return self._insert(
+            "request_traces",
+            {
+                "id": uuid.uuid4().hex,
+                "session_id": session_id,
+                "question": question,
+                "language": language,
+                "pipeline_json": json.dumps(pipeline, ensure_ascii=False),
+                "created_at": _now(),
+            },
+        )
 
 
 runtime = RuntimeStore()

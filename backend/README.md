@@ -1,36 +1,32 @@
 # LinguaSpace Backend
 
-FastAPI single-machine backend for the LinguaSpace Yunnan tourism platform.
+FastAPI backend for the LinguaSpace Yunnan tourism platform. The backend is intended to run through the repository-level one-click startup script so all real infrastructure is available before the API process starts.
 
 ## Run
 
+Use the root startup script:
+
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\python -m pip install -r requirements.txt
-.\.venv\Scripts\python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+..\scripts\start-linguaspace.ps1
 ```
 
-Optional server-side ASR:
+The script installs required backend dependencies, starts Docker infrastructure, checks Ollama models, bootstraps MySQL seed data, and then starts Uvicorn. Running the backend alone is not an acceptance path because MySQL, Redis, MinIO and Neo4j are required at import/runtime.
+
+## Required adapters
 
 ```powershell
+.\.venv\Scripts\python -m pip install -r requirements.txt
+.\.venv\Scripts\python -m pip install -r requirements-infra.txt
 .\.venv\Scripts\python -m pip install -r requirements-asr.txt
 ```
 
-Without `faster-whisper`, uploaded audio is stored and the API reports a clear degraded state. Browser SpeechRecognition remains available for real-time visitor input.
-
-Optional Redis, MinIO and Neo4j adapters:
-
-```powershell
-.\.venv\Scripts\python -m pip install -r requirements-infra.txt
-```
-
-When the enhancement services are unavailable the backend automatically uses memory cache, local files and the MySQL/CSV graph store.
+Redis, MinIO, Neo4j and faster-whisper are required adapters. If any required service or adapter is unavailable, startup or the corresponding request fails instead of falling back to memory, local files or browser-only ASR.
 
 ## Storage
 
-- MySQL is the default runtime store for sessions, messages, logs, reviews, terms, training reports and corrections.
-- CSV files under `app/data/csv/` are editable seed data and the offline fallback.
-- PostgreSQL/pgvector, Redis, MinIO and Neo4j can be started by the root `docker-compose.yml` as enhancement services.
+- MySQL is the required data and runtime store for seed content, sessions, messages, logs, reviews, terms, training reports and corrections.
+- CSV files under `app/data/csv/` are seed input for `scripts/bootstrap_mysql.py`; they are not a runtime fallback.
+- PostgreSQL/pgvector, Redis, MinIO and Neo4j are started by the root `docker-compose.yml` as required infrastructure.
 
 ## Providers
 
