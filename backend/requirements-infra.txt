@@ -1,0 +1,4 @@
+# Optional enhancement adapters. Core single-machine mode degrades gracefully when omitted.
+redis==6.4.0
+minio==7.2.16
+neo4j==5.28.2

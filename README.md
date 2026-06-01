@@ -1,144 +1,85 @@
 # 语界 LinguaSpace
 
-LinguaSpace 是面向云南文旅场景的单机可演示系统。当前版本已经把前端 Demo 接入真实 FastAPI 后端，并提供 RAG 问答、Ollama 模型调用、图片问答占位、文化知识图谱、路线推荐、AI 导游实训评分和 AI + 真人导游协同接口。
+语界是面向云南文旅场景的单机可运行系统，包含游客端、学生端、导游端和管理端。当前版本使用本机 Ollama 提供 LLM 与视觉模型能力，CSV 文件作为可扩展种子数据，支持同步导入 MySQL。
 
-## 本地一键启动
+## 一键启动
 
 前置条件：
 
-- Docker Desktop
-- Python 3.12
+- Python 3.10+
 - Node.js 18+
-- Ollama
+- Ollama，已安装 `qwen3.5:0.8b` 与 `qwen3-vl:4b`
+- 可选：Docker Desktop，用于 PostgreSQL/pgvector、Redis、MinIO、Neo4j
 
-双击根目录的 `start-linguaspace.bat` 即可一键拉起服务。
-
-也可以用 PowerShell：
+双击 `start-linguaspace.bat`，或执行：
 
 ```powershell
 .\scripts\start-linguaspace.ps1
 ```
 
-停止前后端：
+启动脚本会自动读取根目录 `.env`。如需开启本机 Whisper、Redis/MinIO/Neo4j 适配器或角色鉴权，可先从 `.env.example` 复制一份 `.env`，再启用对应开关。开启 `ENFORCE_AUTH=true` 后，管理写操作和导游接管接口需要携带登录接口签发的 Bearer Token。
 
-```powershell
-.\stop-linguaspace.bat
-```
+访问地址：
 
-启动后访问：
-
-- 前端：http://localhost:5173
+- 品牌介绍页：http://localhost:5173
 - 游客端：http://localhost:5173/visitor
 - 学生端：http://localhost:5173/student
 - 导游端：http://localhost:5173/guide
 - 管理端：http://localhost:5173/admin
-- 后端健康检查：http://localhost:8000/api/health
-- 技术架构审计：http://localhost:8000/api/architecture/audit
-- MinIO 控制台：http://localhost:9001
-- Neo4j Browser：http://localhost:7474
+- API 文档：http://localhost:8000/docs
+- 健康检查：http://localhost:8000/api/health
 
-如果只想启动依赖服务：
+停止服务：
+
+```powershell
+.\scripts\stop-linguaspace.ps1
+```
+
+## 数据扩展
+
+可编辑数据位于 `backend/app/data/csv/`。当前包含知识库、文化图谱、景点、常见问题、路线、路线筛选项、实训场景和导游协同案例。
+
+将 CSV 同步到本机 MySQL：
+
+```powershell
+python .\scripts\import_csv_to_mysql.py
+```
+
+本机默认 MySQL 配置为 `root` 用户、空密码、数据库 `linguaspace`。
+
+## 可选基础设施
 
 ```powershell
 docker compose up -d
 ```
 
-如果 Ollama 没有模型：
-
-```powershell
-ollama pull qwen3.5:0.8b
-# 或者
-ollama pull qwen2.5:1.5b
-```
-
-## 手动启动前后端
-
-```powershell
-cd backend
-python -m venv .venv
-.\.venv\Scripts\python -m pip install -r requirements.txt
-.\.venv\Scripts\python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
-
-```powershell
-cd frontend
-npm install
-npm run dev -- --host 0.0.0.0
-```
-
-前端 API 地址通过 `frontend/.env` 或环境变量配置：
-
-```text
-VITE_API_BASE_URL=http://localhost:8000
-```
-
-## API 能力
-
-- `GET /api/health`：检查 API、Ollama、Postgres/pgvector、Redis、MinIO、Neo4j 配置状态。
-- `GET /api/architecture/audit`：客观对照技术架构，返回各层达成状态和缺口。
-- `POST /api/chat`：文本导览问答，先检索知识库，再调用 Ollama，返回答案和来源。
-- `GET /api/knowledge`：管理端读取知识库内容。
-- `POST /api/knowledge`：添加已审核知识。
-- `POST /api/knowledge/search`：检索知识片段。
-- `POST /api/audio/transcribe`、`POST /api/audio/ask`：语音接口占位，后续可接入 faster-whisper。
-- `POST /api/image/ask`：调用 Ollama `qwen3-vl:4b` 做图片理解，再进入 RAG 问答。
-- `POST /api/tts/synthesize`：调用 Windows SAPI 生成 WAV 语音文件，并通过 `/media/...` 返回。
-- `POST /api/graph/query`：查询文化实体关系。
-- `GET /api/graph`：管理端读取完整示例图谱关系。
-- `POST /api/route/recommend`：路线推荐。
-- `POST /api/training/score`：AI 导游实训评分。
-- `POST /api/collaboration/summary`：AI + 真人导游协同摘要。
-- `POST /api/collaboration/correction`：导游修正内容提交审核入库。
-
-## 切换模型供应商
-
-默认使用本机 Ollama：
-
-```text
-LLM_PROVIDER=ollama
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=qwen3.5:0.8b
-OLLAMA_FALLBACK_MODEL=qwen2.5:1.5b
-```
-
-后续切换 DeepSeek、Qwen API 或其他 OpenAI-compatible 服务：
-
-```text
-LLM_PROVIDER=openai-compatible
-OPENAI_COMPATIBLE_BASE_URL=https://api.example.com/v1
-OPENAI_COMPATIBLE_API_KEY=your-key
-OPENAI_COMPATIBLE_MODEL=your-model
-```
-
-业务代码只依赖 `LLMProvider` 抽象，不需要改前端或路由。
+该命令拉起 PostgreSQL/pgvector、Redis、MinIO 和 Neo4j。单机演示在这些组件未启动时仍可使用 CSV 数据和本机 Ollama 运行核心闭环。
 
 ## 验证
-
-前端构建：
-
-```powershell
-cd frontend
-npm run build
-```
-
-后端测试：
 
 ```powershell
 cd backend
 python -m pytest
+cd ..\frontend
+npm run build
 ```
 
-如果当前 Python 环境暂时没有 pytest，可先做轻量冒烟：
+## 关键约束
 
-```powershell
-cd backend
-python -c "from fastapi.testclient import TestClient; from app.main import app; c=TestClient(app); print(c.get('/api/health').json()['status'])"
-```
+- 文化类回答必须先检索知识库；没有可信来源时返回“暂无可靠资料”。
+- 图片模型只负责识别与生成检索关键词，文化解释仍由 RAG 链路生成。
+- 实训评分使用 LLM-as-Judge，同时以规则保护安全、礼仪和服务边界。
+- 导游修正不会直接进入正式知识库，而是先提交审核任务。
 
-## 当前架构达成度
+## 后端能力
 
-管理端 `/admin` 会直接读取 `/api/architecture/audit`。当前客观状态是“单机演示闭环已完成，生产级完整六阶段未完成”：
+当前 FastAPI 后端实现完整单机闭环：
 
-- 已完成：用户端/管理端拆分、Ollama LLM 接入、`qwen3-vl:4b` 图片理解、浏览器实时 ASR、Windows SAPI TTS、RAG 优先回答、来源追溯、知识库录入和检索 API、图谱查询 API、路线推荐、实训评分、协同摘要。
-- 部分完成：PostgreSQL/pgvector、Redis、MinIO、Neo4j 已提供 Docker Compose 和健康检测，但运行时 RAG 仍以内存向量兜底。
-- 仍待增强：服务端音频文件 ASR 尚未接入 faster-whisper/ffmpeg；TTS 当前依赖 Windows SAPI，后续可替换 Piper/MeloTTS；图片精确景点识别仍需依赖知识库校验。
+- 文本 RAG 问答、流式输出、无资料拒答、来源追踪和会话消息持久化。
+- Ollama 文本模型、Ollama 视觉模型、可选 `faster-whisper` ASR、浏览器 ASR 降级、Windows SAPI TTS。
+- OpenAI-compatible 文本 Provider，可通过环境变量切换 DeepSeek、Qwen 等云端 API。
+- 知识文档上传、分片、待审核、通过发布、退回与下线。
+- 文化知识图谱查询与 CRUD、路线推荐、术语表与基础多语一致性替换。
+- AI 导游实训场景 CRUD、LLM-as-Judge 评分、安全规则限分、报告持久化。
+- 游客会话、导游接管、人工回复、导游修正、修正审核与反馈闭环。
+- 用户登录、用户管理、模型调用日志、健康检查、知识统计和架构审计。

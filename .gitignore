@@ -9,6 +9,10 @@ vite.config.d.ts
 .env.*
 !.env.example
 .runtime/
+.workbuddy/
+.git-history-backup/
 __pycache__
 .venv
 backend/media/
+.pytest_cache/
+*.pyc
