@@ -1,0 +1,850 @@
+﻿\chapter{需求分析文档}
+
+\section{项目定位}
+
+\subsection{项目背景}
+
+语界 LinguaSpace 系统面向云南文旅场景，服务对象包括南亚、东南亚游客、导游专业学生、真人导游和系统管理员。随着入境旅游和跨境旅游需求增长，游客在景区游览过程中需要获得多语沟通、景点讲解、路线咨询、文化解释、礼仪提醒等服务。传统导览方式通常依赖固定讲解词、人工导游或单一翻译工具，难以在不同语种、不同景区、不同游客问题之间提供及时、统一、可追踪的服务。
+
+从软件系统角度看，现有服务主要存在以下问题：一是游客输入形式多样，文字、语音、图片和位置等信息缺少统一处理流程；二是多语翻译与文旅专有术语管理不足，容易造成景点名称、民族名称、节庆名称和非遗项目翻译不一致；三是通用大模型缺少受控知识来源，涉及历史文化、民族习俗、宗教礼仪和景区动态信息时存在回答不准确的风险；四是导游服务、学生实训和知识管理之间缺少数据闭环，优秀讲解案例和人工修正内容难以沉淀复用。
+
+因此，本项目需要建设一套面向文旅业务的软件系统，将多语交互、AI 能力调用、RAG 知识库、文化知识图谱、导游协同和实训评价统一纳入系统设计。系统的核心不是让大模型直接回答所有问题，而是通过可审核的知识库、可维护的术语表和可记录的调用链，为游客端、学生端、导游端和管理端提供稳定的软件服务。
+
+\subsection{建设目标}
+
+本项目的总体目标是完成语界 LinguaSpace 多语文旅智能导览与人才培养系统的软件需求分析、系统设计、测试设计和使用说明，明确系统需要实现的功能边界、角色权限、业务流程、数据对象、接口调用和非功能约束。
+
+系统建设目标包括以下几个方面：
+
+\begin{enumerate}
+  \item 明确游客端、学生端、导游端和管理端的业务功能，保证不同角色的入口、权限和操作流程清晰。
+  \item 建立智能导览业务流程，支持文本问答、语音问答、图片问答、多语讲解、路线建议和文化礼仪提示等核心场景。
+  \item 建立 AI 能力编排流程，将语音识别、机器翻译、图像理解、向量检索、大语言模型生成和语音合成拆分为职责明确的服务能力。
+  \item 建立可信内容机制，要求文化类、政策类和景区类回答必须经过知识库检索、术语控制、审核状态过滤和日志记录。
+  \item 建立 AI 导游实训与真人导游协同机制，使学生训练数据、导游修正内容和优质讲解案例能够进入审核与沉淀流程。
+  \item 明确系统的性能、安全、可扩展性、可维护性、可用性和可观测性等非功能需求，为后续设计、实现和测试提供依据。
+\end{enumerate}
+
+\subsection{项目价值}
+
+本项目将多语导览、知识库管理、AI 能力编排、导游协同和实训评价整合为统一的软件系统，能够提升文旅服务的响应效率和内容一致性。系统通过 RAG 知识库、术语表和审核流程约束 AI 输出，降低文化类回答不准确和术语翻译不一致的风险。
+
+同时，系统能够沉淀游客问题、导游修正、实训记录和模型调用日志，为知识库更新、教学复盘和后续系统迭代提供数据依据。
+
+\subsection{目标用户}
+
+系统目标用户分为游客、学生、导游和管理员四类。游客关注多语问答、景点讲解、图片识别和路线建议；学生关注虚拟带团训练、语音讲解提交和训练报告；导游关注游客会话摘要、人工接管、AI 回答修正和优质案例沉淀；管理员关注用户权限、知识库、术语表、审核流程、日志和反馈管理。
+
+\newcommand{\diagramimage}[3][0.95\textwidth]{
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=#1,keepaspectratio]{figures/#2}
+  \caption{#3}
+\end{figure}
+}
+\newcommand{\flowdiagramimage}[3][0.62\textwidth]{
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=#1,keepaspectratio]{figures/#2}
+  \caption{#3}
+\end{figure}
+}
+\newcommand{\classdiagramplaceholder}[3][0.32\textheight]{
+\begin{figure}[H]
+  \centering
+  \fbox{
+    \begin{minipage}[c][#1][c]{0.82\textwidth}
+      \centering
+      #3\\[0.8em]
+      对应图片文件：figures/#2\\
+      绘图代码见 diagram\_prompts.md
+    \end{minipage}
+  }
+  \caption{#3}
+\end{figure}
+}
+\section{运行环境}
+
+\subsection{设备环境}
+
+系统客户端以 Web 端、H5 或小程序为主要使用入口，游客端可部署在移动终端，学生端、导游端和管理端可优先面向 PC 浏览器。服务端需要具备运行后端服务、数据库、缓存、向量数据库、图数据库和模型推理服务的基础资源。
+
+\subsection{接口环境}
+
+系统接口包括客户端调用的 HTTP API、后端内部服务接口以及外部模型服务接口。外部模型服务主要包括语音识别、机器翻译、图像理解、大语言模型、向量化和语音合成等能力；内部接口包括知识库检索、内容审核、日志记录、实训评分和导游协同接口。
+
+\subsection{部署环境}
+
+MVP 阶段可采用 Docker Compose 在单机或少量服务器上部署。后端框架建议使用 FastAPI，业务数据库使用 PostgreSQL，向量数据库使用 Milvus，图数据库使用 Neo4j，缓存使用 Redis，文件存储使用 MinIO。后续如需支持更高并发，可扩展为 Kubernetes 部署方式。
+
+\section{软件需求}
+
+\subsection{功能需求}
+
+系统功能需求按照游客服务、学生实训、导游协同和后台管理四类业务进行划分，各模块之间通过统一的用户体系、会话数据、知识库和日志记录进行关联。
+
+\begin{longtable}{@{}p{1.35cm}p{2.05cm}p{3.15cm}p{5.35cm}p{1.15cm}@{}}
+\toprule
+编号 & 模块 & 功能项 & 需求描述 & 优先级 \\
+\midrule
+FR-01 & 用户与权限 & 登录与角色识别 & 系统应支持游客、学生、导游和管理员等角色，并根据角色加载对应功能入口和操作权限。 & 高 \\
+FR-02 & 用户与权限 & 用户信息维护 & 系统应保存用户基本信息、角色类型、语言偏好、所属机构和账号状态。 & 中 \\
+FR-03 & 智能导览 & 文本提问 & 游客可输入文本问题，系统根据景区、语种和会话上下文完成知识检索与回答生成。 & 高 \\
+FR-04 & 智能导览 & 语音提问 & 游客可上传或录制语音，系统完成语音识别、语言识别、问答生成和可选语音播报。 & 高 \\
+FR-05 & 智能导览 & 图片提问 & 游客可上传景点、文物、菜单、指示牌等图片，系统识别图片内容并结合知识库生成解释。 & 高 \\
+FR-06 & 多语交互 & 翻译与术语控制 & 系统应支持中文、英文和重点南亚东南亚语种的基础互译，并通过术语表保证专有名词一致。 & 高 \\
+FR-07 & 知识库 & 文档上传与切分 & 管理员可上传文旅资料，系统完成格式解析、文本清洗、知识切片和元数据标注。 & 高 \\
+FR-08 & 知识库 & RAG 检索 & 系统应根据用户问题生成向量并召回相关知识片段，正式回答只能使用审核通过的内容。 & 高 \\
+FR-09 & 知识图谱 & 文化关系维护 & 系统应维护景点、城市、民族、节庆、非遗、饮食、建筑和礼仪禁忌之间的关系。 & 中 \\
+FR-10 & AI 实训 & 训练场景管理 & 学生可选择景点讲解、民族文化讲解、接团服务、投诉处理、跨文化交流等实训场景。 & 高 \\
+FR-11 & AI 实训 & 训练评分报告 & 系统应根据知识库内容和评分规则，对学生讲解进行内容准确性、完整度和表达质量评价。 & 高 \\
+FR-12 & 导游协同 & 会话摘要查看 & 真人导游可查看游客语言、位置、兴趣主题、历史问题和 AI 回答摘要。 & 中 \\
+FR-13 & 导游协同 & 人工接管与修正 & 导游可接管游客会话或修正 AI 回答，修正内容进入审核流程后才能入库。 & 高 \\
+FR-14 & 后台管理 & 内容审核 & 管理员可审核知识切片、导游修正、优质案例和敏感内容，并维护审核状态。 & 高 \\
+FR-15 & 日志反馈 & 调用日志记录 & 系统应记录用户问题、检索片段、模型版本、生成结果、反馈信息和异常信息。 & 高 \\
+\bottomrule
+\end{longtable}
+
+\subsection{非功能性需求}
+
+\begin{longtable}{p{1.6cm}p{2.6cm}p{9.2cm}}
+\toprule
+编号 & 类别 & 可验收需求描述 \\
+\midrule
+NFR-01 & 性能需求 & 常规文本问答在正常网络和模型服务可用条件下应在 5 秒内返回文本结果；语音问答和图片问答应在 15 秒内返回处理结果或明确的处理中提示。 \\
+NFR-02 & 并发需求 & MVP 阶段系统应支持不少于 100 个并发普通问答请求；后台管理操作不应阻塞游客端基础问答服务。 \\
+NFR-03 & 安全需求 & 管理端、导游端和学生端必须登录后使用；用户数据、会话记录、训练记录和审核记录必须按角色权限隔离访问。 \\
+NFR-04 & 可用性需求 & 游客端核心问答流程应在 3 次以内点击或输入完成；系统无法回答时必须给出“暂无可靠资料”或明确失败原因。 \\
+NFR-05 & 可扩展性需求 & 新增语种、景区、知识文档、训练场景或模型服务时，应通过配置、入库或适配器扩展完成，不应修改核心业务流程。 \\
+NFR-06 & 可维护性需求 & AI 能力、知识库、图谱、实训和导游协同模块应保持职责清晰，模型调用链和业务日志应能支持问题定位。 \\
+NFR-07 & 可观测性需求 & 每次 AI 调用必须记录请求 ID、用户角色、输入类型、检索结果、模型版本、响应状态和错误信息；关键日志保存不少于 180 天。 \\
+NFR-08 & 内容可信性需求 & 涉及历史文化、民族习俗、宗教礼仪、政策信息、开放时间和票价信息时，系统必须优先检索审核通过的知识库内容，禁止直接由模型自由生成事实。 \\
+NFR-09 & 多语一致性需求 & 景点名称、民族名称、节庆名称、非遗项目、饮食名称和服务设施名称应通过术语表统一翻译，同一术语在同一目标语言下不得出现多个未审核译名。 \\
+\bottomrule
+\end{longtable}
+
+\subsection{需求约束与业务规则}
+
+为保证系统回答可信、数据流转可控，系统应遵循以下业务规则：
+
+\begin{enumerate}
+  \item 未审核或审核未通过的知识切片不得进入游客端正式回答。
+  \item 视觉模型只负责图片内容识别、OCR 和关键词提取，不直接生成文化解释；文化解释必须基于知识库检索结果生成。
+  \item 涉及民族文化、宗教习俗、非遗项目、政策信息、开放时间、票价信息和安全提示的内容，必须优先使用审核通过且标注来源的知识。
+  \item 当系统无法检索到可靠资料时，应提示“暂无可靠资料”，不得让大语言模型自由编造事实。
+  \item 导游修正内容、优质讲解案例和游客反馈触发的知识修订必须进入审核流程，审核通过后才能进入知识库或案例库。
+  \item 术语表中的景点、民族、节庆、非遗、饮食和服务设施名称应作为多语翻译的优先规则。
+  \item 所有 AI 回答必须保存问题、检索来源、模型版本、回答内容和处理状态，便于后续追踪。
+  \item 学生实训评分结果仅作为教学辅助评价，不直接替代教师最终评价。
+\end{enumerate}
+
+\subsection{软件总体流程}
+
+系统总体流程由用户输入、预处理、意图识别、知识检索、图谱补充、回答生成、结果输出和日志沉淀组成。游客、学生、导游和管理员虽然入口不同，但都通过统一的鉴权、会话、知识、审核和日志机制完成业务处理。
+
+\diagramimage{software-overall-process.png}{软件总体流程图}
+
+\subsection{软件体系结构}
+
+系统采用客户端层、业务服务层、AI 能力层、知识增强层、数据与运维层的分层结构。客户端层提供不同角色入口；业务服务层负责导览、实训、协同、审核和日志等业务；AI 能力层封装语音、翻译、视觉、大模型、向量和语音合成服务；知识增强层提供 RAG 知识库、术语表和文化知识图谱；数据与运维层负责结构化数据、向量数据、图数据、缓存、文件和日志。
+
+\section{软件需求描述分析}
+
+\subsection{执行者}
+
+系统执行者包括游客、学生、导游和管理员。游客主要使用智能导览能力；学生主要使用 AI 导游实训能力；导游主要使用会话摘要、人工接管和内容修正能力；管理员主要负责用户、知识、术语、审核、日志和反馈管理。
+
+\subsection{执行者关系}
+
+\begin{longtable}{p{3cm}p{10.4cm}}
+\toprule
+关系 & 说明 \\
+\midrule
+游客与导游 & 游客默认与 AI 导览系统交互，当问题复杂或需要人工服务时，导游可查看摘要并接管会话。 \\
+导游与管理员 & 导游提交的修正内容和优质案例需要由管理员审核，审核通过后才能进入知识库或案例库。 \\
+学生与管理员 & 管理员维护实训场景、评分规则和知识资料，学生基于这些内容进行训练并查看报告。 \\
+游客与管理员 & 游客反馈由管理员查看和处理，反馈结果可用于优化知识库和导览流程。 \\
+\bottomrule
+\end{longtable}
+
+\subsection{每种用户的用例}
+
+本节按照用户类型组织用例。每类用户先给出一个用例图占位图片，随后逐个描述该用户相关用例。每个用例均包括用例名称、执行者、被动参与者、基本动作交互序列、扩展动作交互序列，并在文字说明后预留该用例的 UML 顺序图位置。
+
+\subsubsection{游客用例}
+
+\diagramimage[0.75\textwidth]{tourist-use-case.png}{游客用例图}
+\newpage
+\paragraph{文本提问}
+\begin{description}
+  \item[用例名称：] 文本提问
+  \item[执行者：] 游客
+  \item[被动参与者：] 系统（语界 LinguaSpace）、知识库、AI 编排服务、数据库
+  \item[前置条件：] 执行者已进入对应功能入口，账号权限、网络连接和相关后台服务处于可用状态。
+  \item[基本动作交互序列：]
+  \begin{enumerate}
+    \item 游客进入游客端智能导览界面。
+    \item 游客输入景点、文化、路线或服务相关文字问题。
+    \item 系统识别问题语种、所在景区和问题意图。
+    \item 系统检索审核通过的知识片段，并生成多语回答。
+    \item 系统展示回答内容，并保存问题、检索来源、回答和调用日志。
+  \end{enumerate}
+  \item[扩展动作交互序列：]
+  \begin{enumerate}
+    \item[4a.] 若未检索到可靠资料，系统提示“暂无可靠资料”。
+    \item[4b.] 若模型服务异常，系统提示稍后重试并记录异常日志。
+  \end{enumerate}
+  \item[后置条件：] 系统保存本次操作结果、状态变化和必要日志，相关数据可供后续查询、审核或追踪。
+\end{description}
+\diagramimage{tourist-text-question-sequence.png}{游客文本提问顺序图}
+\newpage
+\paragraph{语音提问}
+\begin{description}
+  \item[用例名称：] 语音提问
+  \item[执行者：] 游客
+  \item[被动参与者：] 系统（语界 LinguaSpace）、语音识别服务、AI 编排服务、数据库
+  \item[前置条件：] 执行者已进入对应功能入口，账号权限、网络连接和相关后台服务处于可用状态。
+  \item[基本动作交互序列：]
+  \begin{enumerate}
+    \item 游客进入语音问答界面并授权录音。
+    \item 游客录制并提交语音问题。
+    \item 系统将语音转写为文本并识别语种。
+    \item 系统将转写文本送入智能导览问答流程。
+    \item 系统返回文本回答，并根据需要生成语音播报。
+  \end{enumerate}
+  \item[扩展动作交互序列：]
+  \begin{enumerate}
+    \item[3a.] 若音频无法识别，系统提示游客重新录制。
+    \item[5a.] 若语音合成失败，系统保留文本回答。
+  \end{enumerate}
+  \item[后置条件：] 系统保存本次操作结果、状态变化和必要日志，相关数据可供后续查询、审核或追踪。
+\end{description}
+\diagramimage{tourist-voice-question-sequence.png}{游客语音提问顺序图}
+\newpage
+\paragraph{图片提问}
+\begin{description}
+  \item[用例名称：] 图片提问
+  \item[执行者：] 游客
+  \item[被动参与者：] 系统（语界 LinguaSpace）、图像理解服务、知识库、数据库
+  \item[前置条件：] 执行者已进入对应功能入口，账号权限、网络连接和相关后台服务处于可用状态。
+  \item[基本动作交互序列：]
+  \begin{enumerate}
+    \item 游客进入图片问答界面。
+    \item 游客上传景点、文物、菜单或指示牌图片，并可补充文字问题。
+    \item 系统识别图片中的对象、文字和地点线索。
+    \item 系统根据识别结果生成检索关键词并查询知识库。
+    \item 系统生成与图片相关的多语讲解或翻译结果。
+  \end{enumerate}
+  \item[扩展动作交互序列：]
+  \begin{enumerate}
+    \item[3a.] 若图片无法识别，系统提示游客更换图片。
+    \item[4a.] 若识别结果缺少知识支撑，系统提示暂无可靠讲解资料。
+  \end{enumerate}
+  \item[后置条件：] 系统保存本次操作结果、状态变化和必要日志，相关数据可供后续查询、审核或追踪。
+\end{description}
+\diagramimage{tourist-image-question-sequence.png}{游客图片提问顺序图}
+\newpage
+\paragraph{查看多语讲解}
+\begin{description}
+  \item[用例名称：] 查看多语讲解
+  \item[执行者：] 游客
+  \item[被动参与者：] 系统（语界 LinguaSpace）、知识库、翻译服务、数据库
+  \item[前置条件：] 执行者已进入对应功能入口，账号权限、网络连接和相关后台服务处于可用状态。
+  \item[基本动作交互序列：]
+  \begin{enumerate}
+    \item 游客选择景点、文化主题或服务内容。
+    \item 游客选择目标语言。
+    \item 系统查询审核通过的讲解内容。
+    \item 系统根据术语表完成多语转换或调用已有多语资料。
+    \item 系统展示多语讲解内容并记录内容版本。
+  \end{enumerate}
+  \item[扩展动作交互序列：]
+  \begin{enumerate}
+    \item[3a.] 若无对应主题资料，系统提示暂无资料。
+    \item[4a.] 若目标语言资料缺失，系统调用翻译服务生成临时译文。
+  \end{enumerate}
+  \item[后置条件：] 系统保存本次操作结果、状态变化和必要日志，相关数据可供后续查询、审核或追踪。
+\end{description}
+\diagramimage{tourist-multilingual-explanation-sequence.png}{游客查看多语讲解顺序图}
+\newpage
+\paragraph{获取路线推荐}
+\begin{description}
+  \item[用例名称：] 获取路线推荐
+  \item[执行者：] 游客
+  \item[被动参与者：] 系统（语界 LinguaSpace）、知识库、图谱服务、数据库
+  \item[前置条件：] 执行者已进入对应功能入口，账号权限、网络连接和相关后台服务处于可用状态。
+  \item[基本动作交互序列：]
+  \begin{enumerate}
+    \item 游客进入路线推荐界面。
+    \item 游客提交当前位置、游览时间、兴趣偏好或目的地。
+    \item 系统解析路线需求并查询景点、路线和文化主题数据。
+    \item 系统生成路线建议、游览说明和注意事项。
+    \item 系统展示路线推荐结果并保存推荐记录。
+  \end{enumerate}
+  \item[扩展动作交互序列：]
+  \begin{enumerate}
+    \item[2a.] 若地点信息缺失，系统提示游客补充位置。
+    \item[3a.] 若路线数据不足，系统返回基础游览建议。
+  \end{enumerate}
+  \item[后置条件：] 系统保存本次操作结果、状态变化和必要日志，相关数据可供后续查询、审核或追踪。
+\end{description}
+\diagramimage{tourist-route-recommendation-sequence.png}{游客获取路线推荐顺序图}
+\newpage
+\paragraph{提交反馈}
+\begin{description}
+  \item[用例名称：] 提交反馈
+  \item[执行者：] 游客
+  \item[被动参与者：] 系统（语界 LinguaSpace）、反馈服务、数据库、管理员
+  \item[前置条件：] 执行者已进入对应功能入口，账号权限、网络连接和相关后台服务处于可用状态。
+  \item[基本动作交互序列：]
+  \begin{enumerate}
+    \item 游客在回答结果或服务页面点击反馈入口。
+    \item 游客填写评分、问题类型或文字说明。
+    \item 系统关联原始问题、回答内容和模型调用日志。
+    \item 系统保存反馈记录。
+    \item 管理员在后台处理反馈。
+  \end{enumerate}
+  \item[扩展动作交互序列：]
+  \begin{enumerate}
+    \item[2a.] 若反馈内容为空，系统提示补充有效信息。
+    \item[4a.] 若提交失败，系统提示重新提交。
+  \end{enumerate}
+  \item[后置条件：] 系统保存本次操作结果、状态变化和必要日志，相关数据可供后续查询、审核或追踪。
+\end{description}
+\diagramimage{tourist-feedback-sequence.png}{游客提交反馈顺序图}
+\newpage
+\subsubsection{学生用例}
+
+\diagramimage[0.7\textwidth]{student-use-case.png}{学生用例图}
+\newpage
+\paragraph{选择实训场景}
+\begin{description}
+  \item[用例名称：] 选择实训场景
+  \item[执行者：] 学生
+  \item[被动参与者：] 系统（语界 LinguaSpace）、实训服务、数据库
+  \item[前置条件：] 执行者已进入对应功能入口，账号权限、网络连接和相关后台服务处于可用状态。
+  \item[基本动作交互序列：]
+  \begin{enumerate}
+    \item 学生登录学生端。
+    \item 学生进入 AI 导游实训界面。
+    \item 学生选择训练类型、景点、语言和难度。
+    \item 系统加载场景规则、知识范围和评分维度。
+    \item 系统创建训练任务并进入训练界面。
+  \end{enumerate}
+  \item[扩展动作交互序列：]
+  \begin{enumerate}
+    \item[3a.] 若场景不可用，系统提示更换场景。
+    \item[5a.] 若任务创建失败，系统提示重新创建。
+  \end{enumerate}
+  \item[后置条件：] 系统保存本次操作结果、状态变化和必要日志，相关数据可供后续查询、审核或追踪。
+\end{description}
+\diagramimage{student-training-scene-sequence.png}{学生选择实训场景顺序图}
+\newpage
+\paragraph{与虚拟游客对话}
+\begin{description}
+  \item[用例名称：] 与虚拟游客对话
+  \item[执行者：] 学生
+  \item[被动参与者：] 系统（语界 LinguaSpace）、AI 编排服务、实训服务、数据库
+  \item[前置条件：] 执行者已进入对应功能入口，账号权限、网络连接和相关后台服务处于可用状态。
+  \item[基本动作交互序列：]
+  \begin{enumerate}
+    \item 学生进入已创建的训练任务。
+    \item 系统生成虚拟游客角色和问题。
+    \item 学生根据问题输入或语音回答。
+    \item 系统根据训练目标生成追问或进入下一环节。
+    \item 系统保存完整训练对话记录。
+  \end{enumerate}
+  \item[扩展动作交互序列：]
+  \begin{enumerate}
+    \item[2a.] 若虚拟问题生成失败，系统重新生成问题。
+    \item[3a.] 若学生中断训练，系统保存当前进度。
+  \end{enumerate}
+  \item[后置条件：] 系统保存本次操作结果、状态变化和必要日志，相关数据可供后续查询、审核或追踪。
+\end{description}
+\diagramimage[0.8\textwidth]{student-virtual-tourist-dialog-sequence.png}{学生与虚拟游客对话顺序图}
+\newpage
+\paragraph{提交语音讲解}
+\begin{description}
+  \item[用例名称：] 提交语音讲解
+  \item[执行者：] 学生
+  \item[被动参与者：] 系统（语界 LinguaSpace）、语音识别服务、评分服务、数据库
+  \item[前置条件：] 执行者已进入对应功能入口，账号权限、网络连接和相关后台服务处于可用状态。
+  \item[基本动作交互序列：]
+  \begin{enumerate}
+    \item 学生进入训练任务的讲解提交界面。
+    \item 学生录制并提交语音讲解。
+    \item 系统上传音频并进行语音转写。
+    \item 系统将转写文本提交评分服务。
+    \item 系统保存音频、文本和提交时间。
+  \end{enumerate}
+  \item[扩展动作交互序列：]
+  \begin{enumerate}
+    \item[3a.] 若音频质量过低，系统提示重新录制。
+    \item[4a.] 若转写失败，系统提示稍后重试。
+  \end{enumerate}
+  \item[后置条件：] 系统保存本次操作结果、状态变化和必要日志，相关数据可供后续查询、审核或追踪。
+\end{description}
+\diagramimage{student-speech-explanation-sequence.png}{学生提交语音讲解顺序图}
+\newpage
+\paragraph{查看训练报告}
+\begin{description}
+  \item[用例名称：] 查看训练报告
+  \item[执行者：] 学生
+  \item[被动参与者：] 系统（语界 LinguaSpace）、评分服务、数据库
+  \item[前置条件：] 执行者已进入对应功能入口，账号权限、网络连接和相关后台服务处于可用状态。
+  \item[基本动作交互序列：]
+  \begin{enumerate}
+    \item 学生进入训练报告页面。
+    \item 系统查询该次训练的评分结果。
+    \item 系统展示总分、分项评价、问题点和改进建议。
+    \item 学生查看报告详情和对应训练记录。
+    \item 系统记录报告查看状态。
+  \end{enumerate}
+  \item[扩展动作交互序列：]
+  \begin{enumerate}
+    \item[2a.] 若报告尚未生成，系统提示等待评分完成。
+    \item[2b.] 若报告生成失败，系统提示重新评分。
+  \end{enumerate}
+  \item[后置条件：] 系统保存本次操作结果、状态变化和必要日志，相关数据可供后续查询、审核或追踪。
+\end{description}
+\diagramimage[0.8\textwidth]{student-training-report-sequence.png}{学生查看训练报告顺序图}
+\newpage
+\paragraph{查看训练历史}
+\begin{description}
+  \item[用例名称：] 查看训练历史
+  \item[执行者：] 学生
+  \item[被动参与者：] 系统（语界 LinguaSpace）、实训服务、数据库
+  \item[前置条件：] 执行者已进入对应功能入口，账号权限、网络连接和相关后台服务处于可用状态。
+  \item[基本动作交互序列：]
+  \begin{enumerate}
+    \item 学生进入训练历史页面。
+    \item 系统按时间、场景或分数展示历史记录。
+    \item 学生筛选目标训练记录。
+    \item 学生查看某次训练详情或报告。
+    \item 系统记录查看行为。
+  \end{enumerate}
+  \item[扩展动作交互序列：]
+  \begin{enumerate}
+    \item[2a.] 若无历史记录，系统展示空状态提示。
+  \end{enumerate}
+  \item[后置条件：] 系统保存本次操作结果、状态变化和必要日志，相关数据可供后续查询、审核或追踪。
+\end{description}
+\diagramimage[0.9\textwidth]{student-training-history-sequence.png}{学生查看训练历史顺序图}
+\newpage
+
+\subsubsection{导游用例}
+
+\diagramimage[0.8\textwidth]{guide-use-case.png}{导游用例图}
+\newpage
+\paragraph{查看游客会话摘要}
+\begin{description}
+  \item[用例名称：] 查看游客会话摘要
+  \item[执行者：] 导游
+  \item[被动参与者：] 系统（语界 LinguaSpace）、导游协同服务、智能导览服务、数据库
+  \item[前置条件：] 执行者已进入对应功能入口，账号权限、网络连接和相关后台服务处于可用状态。
+  \item[基本动作交互序列：]
+  \begin{enumerate}
+    \item 导游登录导游端。
+    \item 导游进入游客会话列表。
+    \item 系统展示可查看会话及游客语言、位置、历史问题和 AI 回答摘要。
+    \item 导游筛选并打开目标会话。
+    \item 系统展示会话详情。
+  \end{enumerate}
+  \item[扩展动作交互序列：]
+  \begin{enumerate}
+    \item[3a.] 若无可查看会话，系统展示空列表。
+    \item[4a.] 若导游权限不足，系统拒绝访问。
+  \end{enumerate}
+  \item[后置条件：] 系统保存本次操作结果、状态变化和必要日志，相关数据可供后续查询、审核或追踪。
+\end{description}
+\diagramimage{guide-session-summary-sequence.png}{导游查看游客会话摘要顺序图}
+\newpage
+\paragraph{接管游客对话}
+\begin{description}
+  \item[用例名称：] 接管游客对话
+  \item[执行者：] 导游
+  \item[被动参与者：] 系统（语界 LinguaSpace）、游客端、导游协同服务、数据库
+  \item[前置条件：] 执行者已进入对应功能入口，账号权限、网络连接和相关后台服务处于可用状态。
+  \item[基本动作交互序列：]
+  \begin{enumerate}
+    \item 导游打开目标游客会话。
+    \item 导游点击接管对话。
+    \item 系统将会话处理人切换为真人导游。
+    \item 游客端显示人工服务状态。
+    \item 导游与游客继续对话，系统保存接管记录。
+  \end{enumerate}
+  \item[扩展动作交互序列：]
+  \begin{enumerate}
+    \item[2a.] 若会话已被其他导游接管，系统提示当前状态。
+    \item[3a.] 若接管失败，系统保留 AI 服务状态。
+  \end{enumerate}
+  \item[后置条件：] 系统保存本次操作结果、状态变化和必要日志，相关数据可供后续查询、审核或追踪。
+\end{description}
+\diagramimage{guide-takeover-sequence.png}{导游接管游客对话顺序图}
+\newpage
+\paragraph{修正 AI 回答}
+\begin{description}
+  \item[用例名称：] 修正 AI 回答
+  \item[执行者：] 导游
+  \item[被动参与者：] 系统（语界 LinguaSpace）、导游协同服务、审核服务、数据库
+  \item[前置条件：] 执行者已进入对应功能入口，账号权限、网络连接和相关后台服务处于可用状态。
+  \item[基本动作交互序列：]
+  \begin{enumerate}
+    \item 导游查看游客会话中的 AI 回答。
+    \item 导游编辑修正内容。
+    \item 系统保存修正记录。
+    \item 系统创建内容审核任务。
+    \item 管理员后续审核修正内容。
+  \end{enumerate}
+  \item[扩展动作交互序列：]
+  \begin{enumerate}
+    \item[2a.] 若修正内容为空，系统提示补充内容。
+    \item[4a.] 若提交失败，系统提示导游重新提交。
+  \end{enumerate}
+  \item[后置条件：] 系统保存本次操作结果、状态变化和必要日志，相关数据可供后续查询、审核或追踪。
+\end{description}
+\diagramimage{guide-ai-answer-correction-sequence.png}{导游修正 AI 回答顺序图}
+\newpage
+\paragraph{提交优质讲解案例}
+\begin{description}
+  \item[用例名称：] 提交优质讲解案例
+  \item[执行者：] 导游
+  \item[被动参与者：] 系统（语界 LinguaSpace）、导游协同服务、审核服务、数据库
+  \item[前置条件：] 执行者已进入对应功能入口，账号权限、网络连接和相关后台服务处于可用状态。
+  \item[基本动作交互序列：]
+  \begin{enumerate}
+    \item 导游进入案例提交界面。
+    \item 导游填写讲解标题、正文、适用景点和主题标签。
+    \item 系统校验必要字段。
+    \item 系统提交审核任务。
+    \item 审核通过后案例进入案例库。
+  \end{enumerate}
+  \item[扩展动作交互序列：]
+  \begin{enumerate}
+    \item[3a.] 若必要字段缺失，系统提示补全。
+    \item[5a.] 若审核未通过，案例退回修改。
+  \end{enumerate}
+  \item[后置条件：] 系统保存本次操作结果、状态变化和必要日志，相关数据可供后续查询、审核或追踪。
+\end{description}
+\diagramimage{guide-case-submission-sequence.png}{导游提交优质讲解案例顺序图}
+\newpage
+\paragraph{查看接管记录}
+\begin{description}
+  \item[用例名称：] 查看接管记录
+  \item[执行者：] 导游
+  \item[被动参与者：] 系统（语界 LinguaSpace）、导游协同服务、数据库
+  \item[前置条件：] 执行者已进入对应功能入口，账号权限、网络连接和相关后台服务处于可用状态。
+  \item[基本动作交互序列：]
+  \begin{enumerate}
+    \item 导游进入接管记录页面。
+    \item 系统展示导游历史接管会话。
+    \item 导游按时间、景区或处理状态筛选记录。
+    \item 导游查看会话摘要、处理结果和审核状态。
+    \item 系统记录查看行为。
+  \end{enumerate}
+  \item[扩展动作交互序列：]
+  \begin{enumerate}
+    \item[2a.] 若无历史记录，系统展示空状态提示。
+  \end{enumerate}
+  \item[后置条件：] 系统保存本次操作结果、状态变化和必要日志，相关数据可供后续查询、审核或追踪。
+\end{description}
+\diagramimage{guide-takeover-record-sequence.png}{导游查看接管记录顺序图}
+\newpage
+\subsubsection{管理员用例}
+
+\diagramimage[0.75\textwidth]{admin-use-case.png}{管理员用例图}
+\newpage
+\paragraph{管理用户与权限}
+\begin{description}
+  \item[用例名称：] 管理用户与权限
+  \item[执行者：] 管理员
+  \item[被动参与者：] 系统（语界 LinguaSpace）、用户权限服务、数据库
+  \item[前置条件：] 执行者已进入对应功能入口，账号权限、网络连接和相关后台服务处于可用状态。
+  \item[基本动作交互序列：]
+  \begin{enumerate}
+    \item 管理员登录管理端。
+    \item 管理员进入用户与权限管理界面。
+    \item 管理员浏览用户列表并筛选目标用户。
+    \item 管理员执行新增、修改、停用账号或调整角色等操作。
+    \item 系统保存修改并更新用户权限状态。
+  \end{enumerate}
+  \item[扩展动作交互序列：]
+  \begin{enumerate}
+    \item[3a.] 若目标用户不存在，系统返回空结果提示。
+    \item[4a.] 若权限配置非法，系统提示管理员修改配置。
+  \end{enumerate}
+  \item[后置条件：] 系统保存本次操作结果、状态变化和必要日志，相关数据可供后续查询、审核或追踪。
+\end{description}
+\diagramimage[0.8\textwidth]{admin-user-permission-sequence.png}{管理员管理用户与权限顺序图}
+\newpage
+\paragraph{上传知识文档}
+\begin{description}
+  \item[用例名称：] 上传知识文档
+  \item[执行者：] 管理员
+  \item[被动参与者：] 系统（语界 LinguaSpace）、知识库服务、审核服务、数据库
+  \item[前置条件：] 执行者已进入对应功能入口，账号权限、网络连接和相关后台服务处于可用状态。
+  \item[基本动作交互序列：]
+  \begin{enumerate}
+    \item 管理员进入知识文档上传界面。
+    \item 管理员选择文旅资料文件并填写来源、景区、语种和主题。
+    \item 系统上传文档并进行格式解析。
+    \item 系统完成文本清洗、切分和元数据标注。
+    \item 系统生成知识审核任务。
+  \end{enumerate}
+  \item[扩展动作交互序列：]
+  \begin{enumerate}
+    \item[3a.] 若文件格式不支持，系统提示重新上传。
+    \item[4a.] 若解析失败，系统记录错误并提示管理员处理。
+  \end{enumerate}
+  \item[后置条件：] 系统保存本次操作结果、状态变化和必要日志，相关数据可供后续查询、审核或追踪。
+\end{description}
+\diagramimage{admin-knowledge-document-upload-sequence.png}{管理员上传知识文档顺序图}
+\newpage
+\paragraph{审核知识内容}
+\begin{description}
+  \item[用例名称：] 审核知识内容
+  \item[执行者：] 管理员
+  \item[被动参与者：] 系统（语界 LinguaSpace）、审核服务、知识库服务、向量服务、数据库
+  \item[前置条件：] 执行者已进入对应功能入口，账号权限、网络连接和相关后台服务处于可用状态。
+  \item[基本动作交互序列：]
+  \begin{enumerate}
+    \item 管理员进入内容审核界面。
+    \item 系统展示待审核知识、导游修正或优质案例。
+    \item 管理员查看内容、来源、敏感级别和适用范围。
+    \item 管理员选择通过、退回修改或下线。
+    \item 系统更新审核状态，通过内容进入正式知识库或案例库。
+  \end{enumerate}
+  \item[扩展动作交互序列：]
+  \begin{enumerate}
+    \item[3a.] 若内容来源不明，管理员退回修改。
+    \item[4a.] 若内容涉及敏感风险，管理员标记为需复核或下线。
+  \end{enumerate}
+  \item[后置条件：] 系统保存本次操作结果、状态变化和必要日志，相关数据可供后续查询、审核或追踪。
+\end{description}
+\diagramimage[0.8\textwidth]{admin-knowledge-review-sequence.png}{管理员审核知识内容顺序图}
+\newpage
+\paragraph{维护术语表}
+\begin{description}
+  \item[用例名称：] 维护术语表
+  \item[执行者：] 管理员
+  \item[被动参与者：] 系统（语界 LinguaSpace）、术语服务、翻译服务、数据库
+  \item[前置条件：] 执行者已进入对应功能入口，账号权限、网络连接和相关后台服务处于可用状态。
+  \item[基本动作交互序列：]
+  \begin{enumerate}
+    \item 管理员进入术语表维护界面。
+    \item 管理员查询或新增景点、民族、节庆、非遗等术语。
+    \item 管理员填写中文名、外文名、解释、适用场景和音译规则。
+    \item 系统校验术语唯一性和必要字段。
+    \item 系统保存术语版本并供翻译流程使用。
+  \end{enumerate}
+  \item[扩展动作交互序列：]
+  \begin{enumerate}
+    \item[4a.] 若术语重复，系统提示合并或修改。
+    \item[4b.] 若必要译名缺失，系统提示补充。
+  \end{enumerate}
+  \item[后置条件：] 系统保存本次操作结果、状态变化和必要日志，相关数据可供后续查询、审核或追踪。
+\end{description}
+\diagramimage[0.75\textwidth]{admin-term-management-sequence.png}{管理员维护术语表顺序图}
+\newpage
+\paragraph{维护知识图谱}
+\begin{description}
+  \item[用例名称：] 维护知识图谱
+  \item[执行者：] 管理员
+  \item[被动参与者：] 系统（语界 LinguaSpace）、图谱服务、数据库
+  \item[前置条件：] 执行者已进入对应功能入口，账号权限、网络连接和相关后台服务处于可用状态。
+  \item[基本动作交互序列：]
+  \begin{enumerate}
+    \item 管理员进入知识图谱维护界面。
+    \item 管理员新增或编辑景点、民族、节庆、非遗等实体。
+    \item 管理员维护实体之间的关联关系。
+    \item 系统校验实体和关系类型。
+    \item 系统保存图谱数据并供文化关联解释使用。
+  \end{enumerate}
+  \item[扩展动作交互序列：]
+  \begin{enumerate}
+    \item[4a.] 若关系类型不合法，系统提示修改。
+    \item[4b.] 若实体重复，系统提示合并或取消新增。
+  \end{enumerate}
+  \item[后置条件：] 系统保存本次操作结果、状态变化和必要日志，相关数据可供后续查询、审核或追踪。
+\end{description}
+\diagramimage[0.8\textwidth]{admin-knowledge-graph-management-sequence.png}{管理员维护知识图谱顺序图}
+\newpage
+\paragraph{查看模型调用日志}
+\begin{description}
+  \item[用例名称：] 查看模型调用日志
+  \item[执行者：] 管理员
+  \item[被动参与者：] 系统（语界 LinguaSpace）、日志服务、数据库
+  \item[前置条件：] 执行者已进入对应功能入口，账号权限、网络连接和相关后台服务处于可用状态。
+  \item[基本动作交互序列：]
+  \begin{enumerate}
+    \item 管理员进入模型调用日志界面。
+    \item 管理员按时间、用户、模型、状态或请求 ID 筛选日志。
+    \item 系统展示用户问题、检索片段、模型版本、回答结果和异常信息。
+    \item 管理员查看日志详情。
+    \item 系统保留查询记录用于运维分析。
+  \end{enumerate}
+  \item[扩展动作交互序列：]
+  \begin{enumerate}
+    \item[2a.] 若无匹配日志，系统展示空结果。
+    \item[3a.] 若日志数据缺失，系统提示记录不完整。
+  \end{enumerate}
+  \item[后置条件：] 系统保存本次操作结果、状态变化和必要日志，相关数据可供后续查询、审核或追踪。
+\end{description}
+\diagramimage[0.8\textwidth]{admin-model-call-log-sequence.png}{管理员查看模型调用日志顺序图}
+\newpage
+\paragraph{管理用户反馈}
+\begin{description}
+  \item[用例名称：] 管理用户反馈
+  \item[执行者：] 管理员
+  \item[被动参与者：] 系统（语界 LinguaSpace）、反馈服务、知识库服务、数据库
+  \item[前置条件：] 执行者已进入对应功能入口，账号权限、网络连接和相关后台服务处于可用状态。
+  \item[基本动作交互序列：]
+  \begin{enumerate}
+    \item 管理员进入用户反馈管理界面。
+    \item 管理员浏览反馈列表并筛选目标反馈。
+    \item 系统展示反馈关联的问题、回答和模型日志。
+    \item 管理员判断是否需要知识修订、术语修订或流程优化。
+    \item 系统归档反馈或创建修订任务。
+  \end{enumerate}
+  \item[扩展动作交互序列：]
+  \begin{enumerate}
+    \item[2a.] 若反馈不存在，系统返回空结果提示。
+    \item[4a.] 若反馈信息不足，管理员标记为无法处理。
+  \end{enumerate}
+  \item[后置条件：] 系统保存本次操作结果、状态变化和必要日志，相关数据可供后续查询、审核或追踪。
+\end{description}
+\diagramimage[0.8\textwidth]{admin-feedback-management-sequence.png}{管理员管理用户反馈顺序图}
+\newpage
+\section{需求分析——数据建模}
+
+\subsection{系统 ER 图}
+
+以下为核心业务实体的 ER 图描述。
+
+\diagramimage{system-er-diagram.png}{系统 ER 图}
+\newpage
+\subsection{系统总体 UML 类图}
+
+以下为需求阶段的系统总体类图描述。UML 类图用于描述系统的静态对象结构，每个核心类由类名、属性和主要方法构成，并通过关联、聚合或组合关系说明不同业务对象之间的依赖。该图位于需求分析的数据建模部分，作为后续概要设计、数据库设计和接口设计的依据。
+
+\diagramimage[0.75\textwidth]{system-overall-class-diagram.png}{系统总体 UML 类图}
+
+\subsection{各子系统核心类图}
+
+系统按照业务职责划分为智能导览、AI 导游实训、真人导游协同、知识库管理、用户与权限管理五类子系统。各子系统类图应在总体 UML 类图基础上进一步细化类名、属性和方法，用于说明对应模块内部的对象职责和协作关系。
+
+\subsubsection{用户与权限管理子系统类图}
+
+该类图描述用户、角色、权限和登录日志之间的静态结构，重点体现用户账号状态、角色分配和权限校验方法。
+
+\diagramimage[0.75\textwidth]{user-permission-subsystem-class-diagram.png}{用户与权限管理子系统类图}
+
+\subsubsection{智能导览子系统类图}
+
+该类图描述游客导览会话、消息记录、导览服务、路线方案、反馈和 AI 编排服务之间的关系，重点体现多模态提问、知识检索、回答生成和路线推荐方法。
+
+\diagramimage{intelligent-guide-subsystem-class-diagram.png}{智能导览子系统类图}
+\newpage
+\subsubsection{知识库管理子系统类图}
+
+该类图描述知识文档、知识切片、术语、文化实体、文化关系和审核任务之间的结构，重点体现文档上传、切片、审核、术语维护和知识图谱维护方法。
+
+\diagramimage{knowledge-base-subsystem-class-diagram.png}{知识库管理子系统类图}
+\newpage
+\subsubsection{AI 导游实训子系统类图}
+
+该类图描述训练场景、虚拟游客、训练记录、语音提交和训练报告之间的关系，重点体现训练启动、虚拟问题生成、语音提交、评分和报告生成方法。
+
+\diagramimage{ai-guide-training-subsystem-class-diagram.png}{AI 导游实训子系统类图}
+\newpage
+\subsubsection{真人导游协同子系统类图}
+
+该类图描述导游接管记录、导游修正、优质案例、模型调用日志和审核任务之间的结构，重点体现会话接管、回答修正、案例提交、日志追踪和审核流转方法。
+
+\diagramimage[0.75\textwidth]{human-guide-collaboration-subsystem-class-diagram.png}{真人导游协同子系统类图}
+
+其中，边界类负责接收页面或接口请求，控制类负责组织业务流程，实体类负责保存业务数据，辅助类负责模型调用、向量检索、翻译、语音识别和图片识别等外部能力封装。
+
+\subsection{核心数据字典}
+
+\begin{longtable}{p{2.6cm}p{4.2cm}p{6.4cm}}
+\toprule
+数据对象 & 主要字段 & 数据说明 \\
+\midrule
+用户 & 用户编号、姓名、角色、语言偏好、账号状态 & 保存游客、学生、导游和管理员的基本身份及权限相关信息。 \\
+导览会话 & 会话编号、用户编号、景区、语种、创建时间 & 保存游客与系统或导游之间的一次连续交互上下文。 \\
+消息记录 & 消息编号、会话编号、输入类型、问题内容、回答内容 & 保存文本、语音转写、图片识别问题及系统回答结果。 \\
+知识文档 & 文档编号、标题、来源、版本、上传时间 & 保存管理员上传的原始文旅资料及来源信息。 \\
+知识切片 & 切片编号、文档编号、正文、审核状态、敏感级别 & 保存 RAG 检索使用的最小知识单元。 \\
+向量索引 & 向量编号、切片编号、向量模型、索引状态 & 保存知识切片向量化后的索引映射信息。 \\
+术语 & 术语编号、中文名、目标语言译名、解释、适用场景 & 保存多语翻译时必须统一的文旅专有名词。 \\
+文化实体 & 实体编号、名称、实体类型、说明 & 保存景点、民族、节庆、非遗、饮食、建筑等图谱节点。 \\
+文化关系 & 关系编号、源实体、目标实体、关系类型 & 保存文化实体之间的关联关系。 \\
+训练场景 & 场景编号、场景名称、类型、难度 & 保存 AI 导游实训的训练任务模板。 \\
+训练记录 & 记录编号、学生编号、场景编号、转写文本、评分 & 保存学生训练过程及评分结果。 \\
+训练报告 & 报告编号、训练记录编号、总分、分项评价、建议 & 保存系统生成的训练反馈报告。 \\
+导游修正 & 修正编号、导游编号、消息编号、修正内容、审核状态 & 保存真人导游对 AI 回答的修正内容。 \\
+审核任务 & 任务编号、对象类型、对象编号、审核状态、审核意见 & 保存知识切片、导游修正、案例和反馈修订的审核过程。 \\
+模型调用日志 & 日志编号、请求编号、模型名称、检索来源、状态 & 保存 AI 调用链路和异常信息。 \\
+用户反馈 & 反馈编号、消息编号、评分、反馈内容、处理状态 & 保存游客对系统回答和服务体验的反馈。 \\
+\bottomrule
+\end{longtable}
+
+\section{需求分析——行为建模}
+
+\subsection{用户与权限管理流程}
+
+\flowdiagramimage{user-permission-management-flow.png}{用户与权限管理流程图}
+
+\subsection{智能导览流程}
+
+\flowdiagramimage[0.6\textwidth]{intelligent-guide-flow.png}{智能导览流程图}
+
+\subsection{图片识别问答流程}
+
+\flowdiagramimage[0.6\textwidth]{image-recognition-qa-flow.png}{图片识别问答流程图}
+
+\subsection{知识库管理流程}
+
+\flowdiagramimage[0.6\textwidth]{knowledge-base-management-flow.png}{知识库管理流程图}
+
+\subsection{AI 导游实训流程}
+
+\flowdiagramimage[0.4\textwidth]{ai-guide-training-flow.png}{AI 导游实训流程图}
+
+\subsection{真人导游协同流程}
+
+\flowdiagramimage[0.6\textwidth]{human-guide-collaboration-flow.png}{真人导游协同流程图}
+
+\subsection{反馈与日志处理流程}
+
+\flowdiagramimage[0.6\textwidth]{feedback-log-processing-flow.png}{反馈与日志处理流程图}
+\newpage
+\section{需求追踪矩阵}
+
+需求追踪矩阵用于说明功能需求、核心用例、图表和后续测试之间的对应关系，便于在测试文档中继续追踪。
+
+\begin{longtable}{p{1.4cm}p{3.1cm}p{4.3cm}p{3.8cm}}
+\toprule
+需求编号 & 功能需求 & 对应用例/流程 & 建议测试关注点 \\
+\midrule
+FR-01 & 登录与角色识别 & 管理用户与权限、用户与权限管理流程图 & 不同角色登录后菜单和权限是否正确。 \\
+FR-02 & 用户信息维护 & 管理用户与权限 & 用户新增、修改、停用和权限调整是否生效。 \\
+FR-03 & 文本提问 & 游客文本提问顺序图、智能导览流程图 & 文本问题是否能检索知识库并返回有来源回答。 \\
+FR-04 & 语音提问 & 游客语音提问顺序图、智能导览流程图 & 音频上传、语音转写、问答生成和失败提示是否正常。 \\
+FR-05 & 图片提问 & 游客图片提问顺序图、图片识别问答流程图 & 图片识别结果是否进入知识检索流程。 \\
+FR-06 & 翻译与术语控制 & 查看多语讲解、维护术语表 & 术语翻译是否与术语表一致。 \\
+FR-07 & 文档上传与切分 & 上传知识文档、知识库管理流程图 & 文档解析、切片、元数据标注和待审核状态是否正确。 \\
+FR-08 & RAG 检索 & 文本提问、图片提问、智能导览流程图 & 未审核内容是否被过滤，缺少资料时是否拒绝编造。 \\
+FR-09 & 文化关系维护 & 维护知识图谱、系统 ER 图 & 实体和关系是否能新增、修改和查询。 \\
+FR-10 & 训练场景管理 & 选择实训场景、AI 导游实训流程图 & 场景选择、任务创建和场景参数加载是否正确。 \\
+FR-11 & 训练评分报告 & 提交语音讲解、查看训练报告 & 语音转写、评分维度和报告生成是否完整。 \\
+FR-12 & 会话摘要查看 & 查看游客会话摘要、真人导游协同流程图 & 导游是否能看到完整上下文和摘要信息。 \\
+FR-13 & 人工接管与修正 & 接管游客对话、修正 AI 回答 & 接管状态切换、游客端提示和修正审核流程是否正确。 \\
+FR-14 & 内容审核 & 审核知识内容、知识库管理流程图 & 审核通过、退回、下线及入库状态是否正确。 \\
+FR-15 & 调用日志记录 & 查看模型调用日志、反馈与日志处理流程图 & 请求 ID、模型版本、检索来源和异常信息是否完整。 \\
+\bottomrule
+\end{longtable}
+
+
+

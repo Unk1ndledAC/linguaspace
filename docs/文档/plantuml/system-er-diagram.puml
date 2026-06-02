@@ -1,0 +1,150 @@
+﻿@startuml
+title 系统 ER 图（菱形联系与 1/* 标注）
+skinparam classAttributeIconSize 0
+hide methods
+
+class "用户 User" as User {
+  user_id : PK
+  name
+  role
+  language_preference
+  status
+}
+
+class "导览会话 Session" as Session {
+  session_id : PK
+  user_id : FK
+  scene
+  language
+  created_at
+}
+
+class "消息 Message" as Message {
+  message_id : PK
+  session_id : FK
+  input_type
+  content
+  answer
+  created_at
+}
+
+class "模型调用日志 ModelCallLog" as Log {
+  log_id : PK
+  message_id : FK
+  model_name
+  retrieved_chunks
+  status
+}
+
+class "反馈 Feedback" as Feedback {
+  feedback_id : PK
+  message_id : FK
+  rating
+  content
+  status
+}
+
+class "知识文档 KnowledgeDocument" as Doc {
+  document_id : PK
+  title
+  source
+  version
+  upload_time
+}
+
+class "知识切片 KnowledgeChunk" as Chunk {
+  chunk_id : PK
+  document_id : FK
+  content
+  review_status
+  sensitivity_level
+}
+
+class "向量索引 VectorIndex" as Vector {
+  vector_id : PK
+  chunk_id : FK
+  embedding_model
+  index_status
+}
+
+class "术语 Term" as Term {
+  term_id : PK
+  zh_name
+  target_name
+  language
+  description
+}
+
+class "文化实体 CultureEntity" as CultureEntity {
+  entity_id : PK
+  name
+  entity_type
+  description
+}
+
+class "文化关系 CultureRelation" as CultureRelation {
+  relation_id : PK
+  source_id : FK
+  target_id : FK
+  relation_type
+}
+
+class "训练场景 TrainingScene" as Scene {
+  scene_id : PK
+  scene_name
+  scene_type
+  difficulty
+}
+
+class "训练记录 TrainingRecord" as TrainRecord {
+  record_id : PK
+  student_id : FK
+  scene_id : FK
+  transcript
+  score
+}
+
+class "训练报告 TrainingReport" as TrainReport {
+  report_id : PK
+  record_id : FK
+  total_score
+  suggestion
+}
+
+class "导游修正 GuideCorrection" as Correction {
+  correction_id : PK
+  guide_id : FK
+  message_id : FK
+  corrected_content
+  review_status
+}
+
+class "审核任务 ReviewTask" as ReviewTask {
+  task_id : PK
+  target_type
+  target_id
+  review_status
+}
+
+User "1" *-- "*" Session : 创建
+Session "1" *-- "*" Message : 包含
+Message "1" *-- "*" Log : 产生
+Message "1" o-- "*" Feedback : 被反馈
+
+Doc "1" *-- "*" Chunk : 切分
+Chunk "1" *-- "1" Vector : 向量化
+Chunk "*" o-- "*" Term : 使用术语
+Chunk "1" o-- "*" ReviewTask : 被审核
+
+CultureEntity "1" o-- "*" CultureRelation : 源实体
+CultureEntity "1" o-- "*" CultureRelation : 目标实体
+
+Scene "1" o-- "*" TrainRecord : 被使用
+User "1" o-- "*" TrainRecord : 学生训练
+TrainRecord "1" *-- "1" TrainReport : 生成
+
+User "1" o-- "*" Correction : 导游提交
+Message "1" o-- "*" Correction : 被修正
+Correction "1" o-- "*" ReviewTask : 进入审核
+Feedback "1" o-- "*" ReviewTask : 触发修订
+@enduml

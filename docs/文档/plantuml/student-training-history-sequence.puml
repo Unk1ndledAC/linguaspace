@@ -1,0 +1,22 @@
+﻿@startuml
+title 学生查看训练历史顺序图（BCE）
+actor 学生
+boundary "学生端训练历史界面" as UI <<boundary>>
+control "训练历史控制器" as HistoryCtl <<control>>
+entity "训练记录" as Record <<entity>>
+entity "训练报告" as Report <<entity>>
+participant "历史筛选工具" as Filter <<utility>>
+
+学生 -> UI : 进入训练历史页面
+UI -> HistoryCtl : listHistory(studentId, filters)
+HistoryCtl -> Filter : normalize(filters)
+Filter --> HistoryCtl : normalizedFilters
+HistoryCtl -> Record : queryByStudent(studentId, normalizedFilters)
+Record --> HistoryCtl : recordList
+HistoryCtl --> UI : showHistory(recordList)
+学生 -> UI : 打开某次训练详情
+UI -> HistoryCtl : getDetail(recordId)
+HistoryCtl -> Report : loadReport(recordId)
+Report --> HistoryCtl : reportData
+HistoryCtl --> UI : showDetail(reportData)
+@enduml

@@ -1,0 +1,55 @@
+import { Check, Database, Plus, Search, Trash2, Upload, X } from "lucide-react";
+import { useEffect, useState, type FormEvent } from "react";
+import { graphApi, type GraphRelation } from "../../api/graph";
+import { knowledgeApi, type KnowledgeChunk, type KnowledgeDocument, type ReviewTask, type Term } from "../../api/knowledge";
+import { touristApi } from "../../api/tourist";
+import type { ChatResult } from "../../api/types";
+import { uploadApi } from "../../api/upload";
+import { EmptyState } from "../../components/common/EmptyState";
+import { ErrorState } from "../../components/common/ErrorState";
+import { LoadingState } from "../../components/common/LoadingState";
+import { StatusBadge } from "../../components/common/StatusBadge";
+
+function Heading({ kicker, title, text }: { kicker: string; title: string; text: string }) { return <header className="page-heading"><span className="page-kicker">{kicker}</span><h1>{title}</h1><p>{text}</p></header>; }
+function Table({ heads, children }: { heads: string[]; children: React.ReactNode }) { return <div className="admin-table-wrap"><table className="admin-table"><thead><tr>{heads.map((head) => <th key={head}>{head}</th>)}</tr></thead><tbody>{children}</tbody></table></div>; }
+function badge(status: string) { return status === "approved" || status === "ready" ? "success" as const : status === "rejected" ? "danger" as const : "warning" as const; }
+
+export function KnowledgeDocumentsPage() {
+  const [items, setItems] = useState<KnowledgeDocument[]>([]); const [file, setFile] = useState<File>(); const [message, setMessage] = useState(""); const [error, setError] = useState("");
+  const refresh = () => knowledgeApi.documents().then((r) => setItems(r.items)).catch((e: Error) => setError(e.message)); useEffect(() => { void refresh(); }, []);
+  const upload = async () => { if (!file) return; const result = await uploadApi.document(file, "管理员上传", "知识工程"); setMessage(`已生成 ${String(result.chunk_count)} 个待审核切片`); setFile(undefined); refresh(); };
+  const action = async (id: string, type: "delete" | "split" | "vectorize") => { if (type === "delete") await knowledgeApi.deleteDocument(id); if (type === "split") await knowledgeApi.splitDocument(id); if (type === "vectorize") await knowledgeApi.vectorizeDocument(id); refresh(); };
+  return <section className="page-stack"><Heading kicker="KNOWLEDGE DOCUMENTS" title="知识文档管理" text="上传、重新切片、向量化和删除都写入真实后端。"/><section className="tech-card form-stack"><input type="file" accept=".txt,.md,.csv" onChange={(e) => setFile(e.target.files?.[0])}/><button className="primary" disabled={!file} onClick={upload}><Upload size={16}/>上传并切片</button>{message && <p>{message}</p>}</section>{error && <ErrorState message={error}/>} {!items.length ? <EmptyState label="暂无上传文档"/> : <Table heads={["文档","来源","切片","向量状态","操作"]}>{items.map((item) => <tr key={item.id}><td><b>{item.title}</b></td><td>{item.source}</td><td>{item.chunk_count}</td><td><StatusBadge tone={badge(item.vector_status)}>{item.vector_status}</StatusBadge></td><td><div className="row-actions"><button onClick={() => action(item.id,"split")}>重新切片</button><button onClick={() => action(item.id,"vectorize")}>向量化</button><button onClick={() => action(item.id,"delete")}><Trash2 size={14}/></button></div></td></tr>)}</Table>}</section>;
+}
+
+export function KnowledgeChunksPage() {
+  const [items,setItems]=useState<KnowledgeChunk[]>([]); const [docs,setDocs]=useState<KnowledgeDocument[]>([]); const [form,setForm]=useState({document_id:"",title:"",content:""}); const refresh=()=>Promise.all([knowledgeApi.chunks(),knowledgeApi.documents()]).then(([a,b])=>{setItems(a.items);setDocs(b.items);if(!form.document_id&&b.items[0])setForm((v)=>({...v,document_id:b.items[0].id}));}); useEffect(()=>{void refresh();},[]);
+  const create=async()=>{if(!form.document_id||!form.title||!form.content)return;await knowledgeApi.addChunk(form);setForm({...form,title:"",content:""});refresh();}; const remove=async(id:string)=>{await knowledgeApi.deleteChunk(id);refresh();}; const vectorize=async(id:string)=>{await knowledgeApi.vectorizeChunk(id);refresh();};
+  return <section className="page-stack"><Heading kicker="KNOWLEDGE CHUNKS" title="知识切片管理" text="切片是独立可维护实体，可新增、删除和向量化。"/><section className="tech-card form-stack"><select value={form.document_id} onChange={(e)=>setForm({...form,document_id:e.target.value})}>{docs.map((d)=><option key={d.id} value={d.id}>{d.title}</option>)}</select><input value={form.title} onChange={(e)=>setForm({...form,title:e.target.value})} placeholder="切片标题"/><textarea value={form.content} onChange={(e)=>setForm({...form,content:e.target.value})} placeholder="切片正文"/><button className="primary" onClick={create}><Plus size={15}/>新增切片</button></section>{!items.length?<EmptyState label="暂无切片"/>:<Table heads={["标题","文档","状态","操作"]}>{items.map((item)=><tr key={item.id}><td><b>{item.title}</b><small>{item.content.slice(0,100)}</small></td><td>{item.document_id.slice(0,8)}</td><td><StatusBadge tone={badge(item.vector_status)}>{item.vector_status}</StatusBadge></td><td><div className="row-actions"><button onClick={()=>vectorize(item.id)}>向量化</button><button onClick={()=>remove(item.id)}><Trash2 size={14}/></button></div></td></tr>)}</Table>}</section>;
+}
+
+export function KnowledgeGraphPage() {
+  const [items,setItems]=useState<GraphRelation[]>([]); const [form,setForm]=useState({source:"",relation:"",target:""}); const refresh=()=>graphApi.list().then((r)=>setItems(r.items)); useEffect(()=>{void refresh();},[]); const create=async(e:FormEvent)=>{e.preventDefault();await graphApi.create(form);setForm({source:"",relation:"",target:""});refresh();}; const remove=async(id:string)=>{await graphApi.remove(id);refresh();};
+  return <section className="page-stack"><Heading kicker="CULTURAL GRAPH" title="文化知识图谱" text="维护真实关系数据。"/><form className="route-filter" onSubmit={create}><input required value={form.source} onChange={(e)=>setForm({...form,source:e.target.value})} placeholder="实体"/><input required value={form.relation} onChange={(e)=>setForm({...form,relation:e.target.value})} placeholder="关系"/><input required value={form.target} onChange={(e)=>setForm({...form,target:e.target.value})} placeholder="目标"/><button className="primary compact"><Plus size={15}/>新增</button></form><Table heads={["实体","关系","目标","操作"]}>{items.slice(0,80).map((item)=><tr key={item.id}><td>{item.source}</td><td>{item.relation}</td><td>{item.target}</td><td><button onClick={()=>remove(item.id)}><Trash2 size={14}/></button></td></tr>)}</Table></section>;
+}
+
+export function KnowledgeReviewPage() {
+  const [items,setItems]=useState<ReviewTask[]>([]); const refresh=()=>knowledgeApi.reviewTasks().then((r)=>setItems(r.items)); useEffect(()=>{void refresh();},[]); const decide=async(id:string,status:"approved"|"rejected")=>{await knowledgeApi.decideReview(id,status);refresh();};
+  return <section className="page-stack"><Heading kicker="REVIEW WORKBENCH" title="知识审核工作台" text="审核通过后才进入正式知识库。"/>{!items.length?<EmptyState label="暂无审核任务"/>:<Table heads={["标题","类型","状态","操作"]}>{items.map((item)=><tr key={item.id}><td><b>{item.title}</b><small>{item.content.slice(0,100)}</small></td><td>{item.object_type}</td><td><StatusBadge tone={badge(item.status)}>{item.status}</StatusBadge></td><td>{item.status==="pending"&&<div className="row-actions"><button onClick={()=>decide(item.id,"approved")}><Check size={14}/></button><button onClick={()=>decide(item.id,"rejected")}><X size={14}/></button></div>}</td></tr>)}</Table>}</section>;
+}
+
+export function KnowledgeTermsPage() {
+  const [items,setItems]=useState<Term[]>([]); const [text,setText]=useState(""); const [message,setMessage]=useState(""); const [form,setForm]=useState({zh_name:"",language:"en",translation:"",scene:""}); const refresh=()=>knowledgeApi.terms().then((r)=>setItems(r.items)); useEffect(()=>{void refresh();},[]);
+  const create=async()=>{await knowledgeApi.addTerm(form);setForm({zh_name:"",language:"en",translation:"",scene:""});refresh();}; const check=async()=>{const r=await knowledgeApi.checkTerms(text);setMessage(`命中 ${r.matched} 条需要检查的术语`);}; const bulk=async()=>{const parsed=text.split("\n").map((line)=>line.split(",")).filter((row)=>row.length>=2).map(([zh_name,translation,scene=""])=>({zh_name,translation,scene,language:"en"}));const r=await knowledgeApi.importTerms(parsed);setMessage(`导入 ${r.created} 条术语`);refresh();};
+  return <section className="page-stack"><Heading kicker="TERM GLOSSARY" title="多语术语库" text="支持单条维护、批量导入和一致性检查。"/><section className="admin-two-col"><article className="tech-card form-stack"><input value={form.zh_name} onChange={(e)=>setForm({...form,zh_name:e.target.value})} placeholder="中文术语"/><input value={form.translation} onChange={(e)=>setForm({...form,translation:e.target.value})} placeholder="翻译"/><input value={form.scene} onChange={(e)=>setForm({...form,scene:e.target.value})} placeholder="场景"/><button className="primary" onClick={create}>新增术语</button></article><article className="tech-card form-stack"><textarea value={text} onChange={(e)=>setText(e.target.value)} placeholder={"每行：中文术语,翻译,场景\n也可粘贴待检查文本"}/><div className="row-actions"><button onClick={bulk}>批量导入</button><button onClick={check}>一致性检查</button></div>{message&&<p>{message}</p>}</article></section><Table heads={["中文","语言","翻译","场景"]}>{items.map((item)=><tr key={item.id}><td>{item.zh_name}</td><td>{item.language}</td><td>{item.translation}</td><td>{item.scene}</td></tr>)}</Table></section>;
+}
+
+export function KnowledgeRagTestPage() {
+  const [question,setQuestion]=useState(""); const [result,setResult]=useState<ChatResult>(); const ask=async()=>setResult(await touristApi.ask({question}));
+  return <section className="page-stack"><Heading kicker="RAG TEST" title="检索增强测试" text="直接验证真实问答链路。"/><section className="tech-card form-stack"><textarea value={question} onChange={(e)=>setQuestion(e.target.value)} placeholder="输入测试问题"/><button className="primary" onClick={ask}><Search size={15}/>执行测试</button></section>{result&&<section className="tech-card"><p>{result.answer}</p><StatusBadge tone={result.reliable?"success":"warning"}>{result.reliable?"命中可靠资料":"拒答"}</StatusBadge></section>}</section>;
+}
+
+export function KnowledgeStatisticsPage() {
+  const [value,setValue]=useState<Record<string,number>>(); const[error,setError]=useState(""); const load=()=>{setError("");knowledgeApi.statistics().then((r)=>setValue(r as unknown as Record<string,number>)).catch((e:Error)=>setError(e.message));}; useEffect(()=>{load();},[]);
+  return <section className="page-stack"><Heading kicker="KNOWLEDGE METRICS" title="知识资产统计" text="展示文档、切片、向量覆盖率与 RAG 命中率。"/>{!value&&!error&&<LoadingState/>}{error&&<ErrorState message={error} retry={load}/>} {value&&<div className="admin-stats-grid">{Object.entries(value).filter(([,amount])=>typeof amount==="number").map(([label,amount])=><article key={label}><Database size={18}/><b>{amount}</b><span>{label}</span></article>)}</div>}</section>;
+}

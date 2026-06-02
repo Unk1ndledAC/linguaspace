@@ -1,93 +1,173 @@
 # 语界 LinguaSpace
 
-语界是面向云南文旅场景的单机可运行系统，包含游客端、学生端、导游端和管理端。当前版本按最终验收口径启动：Docker 基础设施、MySQL、PostgreSQL/pgvector、Redis、MinIO、Neo4j 与本机 Ollama 模型必须真实可用，不做离线或本地模拟降级。
+LinguaSpace 是面向云南文旅场景的多端 Web App，包含项目介绍、游客端、导游端、知识库维护和系统管理五个一级模块。前端优先接入真实 FastAPI 后端；后端缺少能力时，页面明确显示“接口待接入”，不使用 mock data 伪装成功。
 
-## 一键启动
+## 启动方式
 
 前置条件：
 
 - Python 3.10+
 - Node.js 18+
-- Ollama，已安装 `qwen3.5:0.8b` 与 `qwen3-vl:4b`
-- Docker Desktop，用于一次性拉起 MySQL、PostgreSQL/pgvector、Redis、MinIO、Neo4j
+- Docker Desktop
+- Ollama，已安装 `qwen3.5:9b` 与 `qwen3-vl:4b`
 
-双击 `start-linguaspace.bat`，或执行：
+一键启动：
 
 ```powershell
 .\scripts\start-linguaspace.ps1
 ```
 
-启动脚本会自动读取根目录 `.env`，然后强制执行完整启动链路：`docker compose up -d` 拉起基础设施，等待 MySQL/PostgreSQL/Redis/MinIO/Neo4j/Ollama 可连接，校验 `OLLAMA_MODEL` 与 `OLLAMA_VISION_MODEL` 已安装，初始化 MySQL 种子数据，最后启动 FastAPI 与前端。任一关键依赖不可用时启动会直接失败。开启 `ENFORCE_AUTH=true` 后，管理写操作和导游接管接口需要携带登录接口签发的 Bearer Token。
-
-访问地址（前端端口会自动选择空闲端口，以下以 5186 为例，实际以启动输出为准）：
-
-- 品牌介绍页：http://localhost:5186
-- 游客端：http://localhost:5186/visitor
-- 学生端：http://localhost:5186/student
-- 导游端：http://localhost:5186/guide
-- 管理端：http://localhost:5186/admin
-- API 文档：http://localhost:8000/docs
-- 健康检查：http://localhost:8000/api/health
-
-停止服务：
+也可以双击 `start-linguaspace.bat`。停止服务：
 
 ```powershell
 .\scripts\stop-linguaspace.ps1
 ```
 
-## 数据扩展
+启动脚本会读取根目录 `.env`，拉起 MySQL、PostgreSQL/pgvector、Redis、MinIO、Neo4j、FastAPI 和 Vite 前端。前端端口会在 `5173` 到 `5190` 之间自动选择。
 
-可编辑数据位于 `backend/app/data/csv/`。当前包含知识库、文化图谱、景点、常见问题、路线、路线筛选项、实训场景和导游协同案例。
+## 环境变量
 
-将 CSV 同步到本机 MySQL：
+前端通过 Vite 环境变量读取后端地址：
 
-```powershell
-python .\scripts\import_csv_to_mysql.py
+```text
+VITE_API_BASE_URL=http://localhost:8000
+VITE_WS_BASE_URL=ws://localhost:8000
 ```
 
-若需要强制用 CSV 重新覆盖 MySQL（例如更新图谱语义关系），可先设置：
+后端环境变量示例见 `.env.example`。默认 API 文档地址为 `http://localhost:8000/docs`，健康检查地址为 `http://localhost:8000/api/health`。
 
-```powershell
-$env:BOOTSTRAP_FORCE="1"
-```
+## 技术栈
 
-本机默认 MySQL 配置为 `linguaspace` 用户、密码 `linguaspace`、数据库 `linguaspace`，由 `docker-compose.yml` 中的 MySQL 容器提供。若 3306 已被占用，会映射到 3307。若 MySQL root 密码不是 `linguaspace-root`，请在 `.env` 或环境变量中设置 `MYSQL_ROOT_PASSWORD`。
+- React 18、TypeScript、Vite
+- React Router 嵌套路由
+- Lucide React 图标
+- FastAPI 后端
+- MySQL、PostgreSQL/pgvector、Redis、MinIO、Neo4j
+- Ollama 文本模型、Ollama 视觉模型、faster-whisper ASR、Windows SAPI TTS
 
-## 基础设施
+## 路由表
 
-```powershell
-docker compose up -d
-```
+| 一级模块 | 子页面 |
+| --- | --- |
+| 项目介绍 `/intro` | `/intro/overview`、`/intro/architecture`、`/intro/features`、`/intro/scenarios`、`/intro/roadmap` |
+| 游客端 `/tourist` | `/tourist/home`、`/tourist/chat`、`/tourist/voice`、`/tourist/image`、`/tourist/routes`、`/tourist/culture-tips`、`/tourist/history` |
+| 导游端 `/guide` | `/guide/dashboard`、`/guide/sessions`、`/guide/sessions/:id`、`/guide/takeover`、`/guide/corrections`、`/guide/cases`、`/guide/profile` |
+| 知识库 `/knowledge` | `/knowledge/documents`、`/knowledge/chunks`、`/knowledge/graph`、`/knowledge/review`、`/knowledge/terms`、`/knowledge/rag-test`、`/knowledge/statistics` |
+| 系统管理 `/system` | `/system/dashboard`、`/system/users`、`/system/roles`、`/system/permissions`、`/system/health`、`/system/logs`、`/system/metrics`、`/system/settings` |
 
-该命令拉起 MySQL、PostgreSQL/pgvector、Redis、MinIO 和 Neo4j。一键启动脚本会自动执行该命令并做端口与模型校验；后端不再使用 CSV、内存缓存、本地文件或 MySQL/CSV 图谱作为运行时降级链路。
+访问 `/` 时自动跳转到 `/intro/overview`。
+
+## 双视觉体系
+
+- `/intro`、`/tourist`、`/guide` 使用文旅沉浸式布局：顶部导航、Hero、旅行杂志式卡片、玻璃浮层、孔雀蓝与暖金色。
+- `/knowledge`、`/system` 使用简洁科技后台布局：左侧 Sidebar、顶部状态栏、工具栏、表格、状态卡片和真实图谱画布。
+
+视觉参考分析见 `docs/reference-analysis.md`。
+
+## 已接入接口
+
+### 游客端
+
+- `GET /api/content/guide`
+- `GET /api/content/routes`
+- `POST /api/sessions`
+- `GET /api/sessions`
+- `POST /api/chat`
+- `POST /api/chat/stream`
+- `POST /api/audio/transcribe`
+- `POST /api/audio/ask`
+- `POST /api/image/ask`
+- `POST /api/route/recommend`
+- `POST /api/tts/synthesize`
+- `GET/POST /api/feedback`
+- `GET /api/stats/overview`
+- `GET /api/tourist/home`
+- `GET/PUT /api/tourist/preferences`
+- `GET /api/tourist/culture-tips`
+- `GET/POST/DELETE /api/tourist/favorites`
+- `POST /api/tourist/handoff`
+
+### 导游端
+
+- `GET /api/collaboration/sessions`
+- `GET /api/collaboration/corrections`
+- `GET /api/collaboration/cases`
+- `POST /api/collaboration/correction`
+- `POST /api/sessions/:id/takeover`
+- `POST /api/sessions/:id/guide-reply`
+- `POST /api/sessions/:id/release`
+- `GET /api/guide/takeover-logs`
+- `GET /api/guide/profile`
+- `POST/PUT/DELETE /api/collaboration/cases`
+- `PUT /api/collaboration/corrections/:id`
+
+### 知识库与系统管理
+
+- `POST /api/auth/login`
+- `GET/POST /api/users`
+- `PUT /api/users/:id/status`
+- `GET /api/architecture/audit`
+- `GET /api/health`
+- `GET/POST /api/knowledge/documents`
+- `GET /api/review/tasks`
+- `POST /api/review/tasks/:id/decision`
+- `GET/POST/PUT/DELETE /api/terms`
+- `GET/POST/PUT/DELETE /api/graph`
+- `POST /api/graph/query`
+- `POST /api/knowledge/search`
+- `GET /api/knowledge/stats`
+- `GET /api/logs/model-calls`
+- `GET /api/logs/request-traces`
+- `GET/PUT/DELETE /api/knowledge/documents/:id`
+- `POST /api/knowledge/documents/:id/split`
+- `POST /api/knowledge/documents/:id/vectorize`
+- `GET/POST/PUT/DELETE /api/knowledge/chunks`
+- `POST /api/terms/import`
+- `POST /api/terms/check`
+- `GET /api/knowledge/statistics`
+- `PUT/DELETE /api/users/:id`
+- `GET/POST/PUT/DELETE /api/roles`
+- `GET /api/permissions`
+- `PUT /api/roles/:id/permissions`
+- `GET /api/system/dashboard`
+- `GET /api/system/alerts`
+- `GET /api/system/metrics`
+- `GET/PUT /api/system/settings`
+
+## 外部服务与后续增强
+
+- 天气接口已返回明确的 Provider 配置状态；接入第三方天气服务后可返回实时天气。
+- 浏览器内录音已接入 `MediaRecorder`；完整 ASR 效果需要演示设备录音复查。
+- 系统指标已接入真实聚合；后续可增加按日趋势图。
+
+## Mock 与图片资源
+
+默认运行逻辑不依赖 mock data。外部服务未配置时，页面展示明确状态，不伪装成功。
+
+现有图片位于 `frontend/public/assets/`。新增图片需求不联网下载素材，统一维护在 `docs/image-prompts.md`。该文件当前包含 43 条图片生成 Prompt，覆盖项目介绍、游客端、导游端、后台纹理和公共背景。
+
+## 文档
+
+- `docs/LinguaSpace_frontend_page_design.md`：完整页面设计与验收标准。
+- `docs/reference-analysis.md`：参考网页提炼与原创转化方案。
+- `docs/frontend-implementation-plan.md`：逐页接口映射、阶段进度和复查项。
+- `docs/image-prompts.md`：后续图片生成清单。
 
 ## 验证
 
 ```powershell
-cd backend
-python -m pytest
-cd ..\frontend
+cd frontend
 npm run build
+
+cd ..\backend
+python -m pytest
 ```
 
-## 关键约束
+项目当前没有独立 `lint` script；`npm run build` 已包含 `tsc -b` 类型检查。
 
-- 文化类回答必须先检索知识库；没有可信来源时返回“暂无可靠资料”。
-- 图片模型只负责识别与生成检索关键词，文化解释仍由 RAG 链路生成。
-- 实训评分使用 LLM-as-Judge，同时以规则保护安全、礼仪和服务边界。
-- 导游修正不会直接进入正式知识库，而是先提交审核任务。
+## 后续优化
 
-## 后端能力
-
-当前 FastAPI 后端实现完整单机闭环：
-
-- 文本 RAG 问答、流式输出、无资料拒答、来源追踪和会话消息持久化。
-- 混合检索（向量 + 关键词 + 图谱语义扩展）与可解释的检索得分。
-- 图谱语义增强：讲解关系、游客类型适配、禁忌/风险提示、时空属性。
-- Ollama 文本模型、Ollama 视觉模型、`faster-whisper` ASR、Windows SAPI TTS。
-- OpenAI-compatible 文本 Provider，可通过环境变量切换 DeepSeek、Qwen 等云端 API。
-- 知识文档上传、分片、待审核、通过发布、退回与下线。
-- 文化知识图谱查询与 CRUD、路线推荐、术语表与基础多语一致性替换。
-- AI 导游实训场景 CRUD、LLM-as-Judge 评分、安全规则限分、报告持久化。
-- 游客会话、导游接管、人工回复、导游修正、修正审核与反馈闭环。
-- 用户登录、用户管理、模型调用日志、健康检查、知识统计和架构审计。
+- 增加浏览器录音上传进度展示。
+- 为图谱增加节点点击抽屉和关系删除确认。
+- 补充系统指标按日趋势图表。
+- 增加端到端浏览器测试和多语评测集。

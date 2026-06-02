@@ -1,0 +1,22 @@
+﻿@startuml
+title 管理员上传知识文档顺序图（BCE）
+actor 管理员
+boundary "管理端知识上传界面" as UI <<boundary>>
+control "知识入库控制器" as KnowledgeCtl <<control>>
+control "审核控制器" as ReviewCtl <<control>>
+entity "知识文档" as Doc <<entity>>
+entity "知识切片" as Chunk <<entity>>
+entity "审核任务" as ReviewTask <<entity>>
+participant "文档解析工具" as Parser <<utility>>
+
+管理员 -> UI : 上传文档并填写元数据
+UI -> KnowledgeCtl : uploadDocument(file, metadata)
+KnowledgeCtl -> Parser : parseAndClean(file)
+Parser --> KnowledgeCtl : cleanText
+KnowledgeCtl -> Doc : create(metadata)
+KnowledgeCtl -> Chunk : splitAndSave(cleanText, docId)
+KnowledgeCtl -> ReviewCtl : createReviewTasks(chunkIds)
+ReviewCtl -> ReviewTask : savePendingTasks(chunkIds)
+ReviewCtl --> KnowledgeCtl : tasksCreated
+KnowledgeCtl --> UI : uploadSuccess
+@enduml

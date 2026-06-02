@@ -1,0 +1,23 @@
+﻿@startuml
+title 管理员管理用户与权限顺序图（BCE）
+actor 管理员
+boundary "管理端用户界面" as UI <<boundary>>
+control "用户权限控制器" as UserCtl <<control>>
+entity "用户账号" as User <<entity>>
+entity "角色权限" as Role <<entity>>
+participant "权限校验工具" as Auth <<utility>>
+
+管理员 -> UI : 进入用户管理界面
+UI -> UserCtl : queryUsers(filters)
+UserCtl -> Auth : checkAdminPermission(adminId)
+Auth --> UserCtl : allowed
+UserCtl -> User : query(filters)
+User --> UserCtl : userList
+UserCtl --> UI : showUsers(userList)
+管理员 -> UI : 新增/修改/停用/调整角色
+UI -> UserCtl : saveUserChange(changeForm)
+UserCtl -> Role : validateRole(changeForm.role)
+Role --> UserCtl : roleValid
+UserCtl -> User : save(changeForm)
+UserCtl --> UI : saveResult(success)
+@enduml

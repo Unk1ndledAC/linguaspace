@@ -1,0 +1,23 @@
+﻿@startuml
+title 学生与虚拟游客对话顺序图（BCE）
+actor 学生
+boundary "学生端对话界面" as UI <<boundary>>
+control "实训对话控制器" as DialogCtl <<control>>
+entity "训练任务" as Task <<entity>>
+entity "训练对话记录" as Dialog <<entity>>
+participant "虚拟游客生成器" as VirtualVisitor <<utility>>
+
+学生 -> UI : 打开训练任务
+UI -> DialogCtl : startDialog(taskId)
+DialogCtl -> Task : loadTask(taskId)
+Task --> DialogCtl : sceneConfig
+DialogCtl -> VirtualVisitor : generateQuestion(sceneConfig)
+VirtualVisitor --> DialogCtl : visitorQuestion
+DialogCtl --> UI : showQuestion(visitorQuestion)
+学生 -> UI : 提交回答
+UI -> DialogCtl : submitAnswer(answer)
+DialogCtl -> Dialog : saveTurn(visitorQuestion, answer)
+DialogCtl -> VirtualVisitor : generateFollowUp(answer)
+VirtualVisitor --> DialogCtl : followUpQuestion
+DialogCtl --> UI : showFollowUp(followUpQuestion)
+@enduml

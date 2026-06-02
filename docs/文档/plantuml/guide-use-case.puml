@@ -1,0 +1,15 @@
+﻿@startuml
+title 导游用例图
+left to right direction
+actor 导游
+rectangle "导游端" {
+  导游 -- (查看游客会话摘要)
+  导游 -- (接管游客对话)
+  导游 -- (修正AI回答)
+  导游 -- (提交优质讲解案例)
+  导游 -- (查看接管记录)
+  (接管游客对话) ..> (查看游客会话摘要) : include
+  (修正AI回答) ..> (提交审核) : include
+  (提交优质讲解案例) ..> (提交审核) : include
+}
+@enduml

@@ -1,0 +1,26 @@
+﻿@startuml
+title 管理员审核知识内容顺序图（BCE）
+actor 管理员
+boundary "管理端审核界面" as UI <<boundary>>
+control "审核控制器" as ReviewCtl <<control>>
+control "知识库控制器" as KnowledgeCtl <<control>>
+entity "审核任务" as ReviewTask <<entity>>
+entity "知识切片" as Chunk <<entity>>
+participant "向量化工具" as Embedder <<utility>>
+
+管理员 -> UI : 打开审核任务列表
+UI -> ReviewCtl : listPendingTasks(filters)
+ReviewCtl -> ReviewTask : queryPending(filters)
+ReviewTask --> ReviewCtl : taskList
+ReviewCtl --> UI : showTasks(taskList)
+管理员 -> UI : 提交通过/退回/下线结果
+UI -> ReviewCtl : submitReview(taskId, decision)
+ReviewCtl -> ReviewTask : updateStatus(decision)
+ReviewCtl -> Chunk : updateReviewStatus(decision)
+alt 审核通过
+  ReviewCtl -> Embedder : vectorize(chunkContent)
+  Embedder --> ReviewCtl : vectorId
+  ReviewCtl -> KnowledgeCtl : publishChunk(chunkId, vectorId)
+end
+ReviewCtl --> UI : reviewResult(success)
+@enduml

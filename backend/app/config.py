@@ -11,7 +11,7 @@ class Settings:
     data_dir: Path = Path(__file__).parent / "data" / "csv"
     media_dir: Path = Path(__file__).parent.parent / "media"
     ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
-    ollama_model: str = os.getenv("OLLAMA_MODEL", "qwen3.5:0.8b")
+    ollama_model: str = os.getenv("OLLAMA_MODEL", "qwen3.5:9b")
     ollama_vision_model: str = os.getenv("OLLAMA_VISION_MODEL", "qwen3-vl:4b")
     llm_provider: str = os.getenv("LLM_PROVIDER", "ollama")
     openai_compatible_base_url: str = os.getenv("OPENAI_COMPATIBLE_BASE_URL", "")

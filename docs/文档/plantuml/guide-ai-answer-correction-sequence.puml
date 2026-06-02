@@ -1,0 +1,23 @@
+﻿@startuml
+title 导游修正 AI 回答顺序图（BCE）
+actor 导游
+boundary "导游端修正界面" as UI <<boundary>>
+control "回答修正控制器" as CorrectionCtl <<control>>
+control "审核控制器" as ReviewCtl <<control>>
+entity "消息记录" as Message <<entity>>
+entity "导游修正记录" as Correction <<entity>>
+entity "审核任务" as ReviewTask <<entity>>
+participant "修正内容校验工具" as Validator <<utility>>
+
+导游 -> UI : 编辑修正内容
+UI -> CorrectionCtl : submitCorrection(messageId, correctedContent)
+CorrectionCtl -> Validator : validate(correctedContent)
+Validator --> CorrectionCtl : validateResult
+CorrectionCtl -> Message : loadOriginalAnswer(messageId)
+Message --> CorrectionCtl : originalAnswer
+CorrectionCtl -> Correction : create(messageId, correctedContent)
+CorrectionCtl -> ReviewCtl : createReviewTask(correctionId)
+ReviewCtl -> ReviewTask : savePendingTask(correctionId)
+ReviewCtl --> CorrectionCtl : taskCreated
+CorrectionCtl --> UI : submitSuccess
+@enduml

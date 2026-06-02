@@ -1,0 +1,33 @@
+@startuml
+skinparam dpi 160
+skinparam shadowing false
+title 智能导览编排活动图
+
+start
+:接收文本、语音、图片或位置输入;
+if (输入类型为语音?) then (是)
+  :调用 ASR 转写;
+elseif (输入类型为图片?) then (是)
+  :调用视觉识别与 OCR;
+else (文本)
+  :直接进入问题标准化;
+endif
+:语言识别与问题标准化;
+:权限与敏感词检查;
+:检索审核通过的知识切片;
+:查询文化图谱补充关系;
+if (可信上下文为空?) then (是)
+  :返回暂无可靠资料提示;
+  :记录未命中日志;
+else (否)
+  :构造受控提示词;
+  :调用 LLM 生成回答;
+  :生成来源引用与置信标记;
+  if (需要语音播报?) then (是)
+    :调用 TTS 生成音频;
+  endif
+  :保存消息和模型调用日志;
+endif
+:返回多语回答;
+stop
+@enduml

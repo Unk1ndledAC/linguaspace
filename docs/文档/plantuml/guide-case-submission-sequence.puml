@@ -1,0 +1,20 @@
+﻿@startuml
+title 导游提交优质讲解案例顺序图（BCE）
+actor 导游
+boundary "导游端案例提交界面" as UI <<boundary>>
+control "案例提交控制器" as CaseCtl <<control>>
+control "审核控制器" as ReviewCtl <<control>>
+entity "讲解案例" as Case <<entity>>
+entity "审核任务" as ReviewTask <<entity>>
+participant "字段校验工具" as Validator <<utility>>
+
+导游 -> UI : 填写案例内容和标签
+UI -> CaseCtl : submitCase(caseForm)
+CaseCtl -> Validator : validate(caseForm)
+Validator --> CaseCtl : validateResult
+CaseCtl -> Case : create(caseForm)
+CaseCtl -> ReviewCtl : createReviewTask(caseId)
+ReviewCtl -> ReviewTask : savePendingTask(caseId)
+ReviewCtl --> CaseCtl : taskCreated
+CaseCtl --> UI : submitSuccess
+@enduml

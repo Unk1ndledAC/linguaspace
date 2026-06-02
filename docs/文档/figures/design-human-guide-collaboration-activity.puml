@@ -1,0 +1,28 @@
+@startuml
+skinparam dpi 160
+skinparam shadowing false
+title 真人导游协同活动图
+
+start
+:AI 持续处理游客会话;
+:生成会话摘要与风险标签;
+if (触发人工介入条件?) then (是)
+  :通知在线导游;
+  :导游查看上下文摘要;
+  if (导游接管?) then (接管)
+    :游客端切换人工服务状态;
+    :导游发送人工回复;
+    :记录接管过程;
+  else (不接管)
+    :AI 继续服务并保留风险提示;
+  endif
+else (否)
+  :AI 正常返回回答;
+endif
+if (导游提交修正或案例?) then (是)
+  :创建审核任务;
+  :审核通过后回流知识库或案例库;
+endif
+:归档协同记录;
+stop
+@enduml

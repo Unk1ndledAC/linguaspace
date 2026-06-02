@@ -150,6 +150,25 @@ class Store:
             self.scenarios.remove(self._find(self.scenarios, scenario_id))
             self._persist("training_scenarios", self.scenarios)
 
+    def add_case(self, payload: dict[str, Any]) -> dict[str, Any]:
+        with self.lock:
+            item = {"id": payload.get("id") or f"case-{uuid.uuid4().hex[:10]}", "case_type": payload["case_type"], "question": payload["question"], "strategy": payload["strategy"], "guide_note": payload.get("guide_note", ""), "sort_order": str(len(self.cases) + 1), "updated_at": datetime.now().isoformat(timespec="seconds")}
+            self.cases.append(item)
+            self._persist("collaboration_cases", self.cases)
+            return item
+
+    def update_case(self, case_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        with self.lock:
+            item = self._find(self.cases, case_id)
+            item.update(case_type=payload["case_type"], question=payload["question"], strategy=payload["strategy"], guide_note=payload.get("guide_note", ""), updated_at=datetime.now().isoformat(timespec="seconds"))
+            self._persist("collaboration_cases", self.cases)
+            return item
+
+    def delete_case(self, case_id: str) -> None:
+        with self.lock:
+            self.cases.remove(self._find(self.cases, case_id))
+            self._persist("collaboration_cases", self.cases)
+
     @staticmethod
     def _find(rows: list[dict[str, Any]], item_id: str) -> dict[str, Any]:
         for item in rows:

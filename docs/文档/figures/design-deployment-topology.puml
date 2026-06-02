@@ -1,0 +1,48 @@
+@startuml
+skinparam dpi 160
+skinparam shadowing false
+title 部署拓扑设计图
+
+node "用户终端" {
+  artifact "H5 / 小程序 / Web 浏览器" as Browser
+}
+
+node "应用服务器" {
+  component "Nginx 静态资源服务" as Nginx
+  component "FastAPI 应用容器" as API
+  component "异步任务 Worker" as Worker
+}
+
+node "模型服务器" {
+  component "LLM/Vision 推理服务" as LLM
+  component "ASR/TTS 服务" as Speech
+  component "Embedding 服务" as Embed
+}
+
+database "PostgreSQL\n业务数据" as PG
+database "Milvus\n向量索引" as MV
+database "Neo4j\n文化图谱" as GDB
+database "Redis\n缓存与任务状态" as RD
+cloud "MinIO\n文件对象" as OSS
+node "监控节点" {
+  component "Prometheus / Grafana / Loki" as Monitor
+}
+
+Browser --> Nginx : HTTPS
+Browser --> API : REST API
+Nginx --> API : 反向代理
+API --> Worker : 投递异步任务
+API --> LLM
+API --> Speech
+API --> Embed
+API --> PG
+API --> MV
+API --> GDB
+API --> RD
+API --> OSS
+Worker --> PG
+Worker --> MV
+Worker --> OSS
+API --> Monitor : 指标与日志
+Worker --> Monitor
+@enduml

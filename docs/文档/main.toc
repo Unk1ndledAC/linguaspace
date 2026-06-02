@@ -1,0 +1,214 @@
+\contentsline {chapter}{\numberline {第一章\hspace {.3em}}需求分析文档}{6}{chapter.1}%
+\contentsline {section}{\numberline {1.1}项目定位}{6}{section.1.1}%
+\contentsline {subsection}{\numberline {1.1.1}项目背景}{6}{subsection.1.1.1}%
+\contentsline {subsection}{\numberline {1.1.2}建设目标}{6}{subsection.1.1.2}%
+\contentsline {subsection}{\numberline {1.1.3}项目价值}{7}{subsection.1.1.3}%
+\contentsline {subsection}{\numberline {1.1.4}目标用户}{7}{subsection.1.1.4}%
+\contentsline {section}{\numberline {1.2}运行环境}{7}{section.1.2}%
+\contentsline {subsection}{\numberline {1.2.1}设备环境}{7}{subsection.1.2.1}%
+\contentsline {subsection}{\numberline {1.2.2}接口环境}{8}{subsection.1.2.2}%
+\contentsline {subsection}{\numberline {1.2.3}部署环境}{8}{subsection.1.2.3}%
+\contentsline {section}{\numberline {1.3}软件需求}{8}{section.1.3}%
+\contentsline {subsection}{\numberline {1.3.1}功能需求}{8}{subsection.1.3.1}%
+\contentsline {subsection}{\numberline {1.3.2}非功能性需求}{10}{subsection.1.3.2}%
+\contentsline {subsection}{\numberline {1.3.3}需求约束与业务规则}{10}{subsection.1.3.3}%
+\contentsline {subsection}{\numberline {1.3.4}软件总体流程}{11}{subsection.1.3.4}%
+\contentsline {subsection}{\numberline {1.3.5}软件体系结构}{12}{subsection.1.3.5}%
+\contentsline {section}{\numberline {1.4}软件需求描述分析}{12}{section.1.4}%
+\contentsline {subsection}{\numberline {1.4.1}执行者}{12}{subsection.1.4.1}%
+\contentsline {subsection}{\numberline {1.4.2}执行者关系}{13}{subsection.1.4.2}%
+\contentsline {subsection}{\numberline {1.4.3}每种用户的用例}{13}{subsection.1.4.3}%
+\contentsline {subsubsection}{游客用例}{13}{subsubsection*.2}%
+\contentsline {paragraph}{文本提问}{14}{paragraph*.3}%
+\contentsline {paragraph}{语音提问}{15}{paragraph*.4}%
+\contentsline {paragraph}{图片提问}{16}{paragraph*.5}%
+\contentsline {paragraph}{查看多语讲解}{17}{paragraph*.6}%
+\contentsline {paragraph}{获取路线推荐}{18}{paragraph*.7}%
+\contentsline {paragraph}{提交反馈}{19}{paragraph*.8}%
+\contentsline {subsubsection}{学生用例}{20}{subsubsection*.9}%
+\contentsline {paragraph}{选择实训场景}{21}{paragraph*.10}%
+\contentsline {paragraph}{与虚拟游客对话}{22}{paragraph*.11}%
+\contentsline {paragraph}{提交语音讲解}{23}{paragraph*.12}%
+\contentsline {paragraph}{查看训练报告}{24}{paragraph*.13}%
+\contentsline {paragraph}{查看训练历史}{25}{paragraph*.14}%
+\contentsline {subsubsection}{导游用例}{26}{subsubsection*.15}%
+\contentsline {paragraph}{查看游客会话摘要}{27}{paragraph*.16}%
+\contentsline {paragraph}{接管游客对话}{28}{paragraph*.17}%
+\contentsline {paragraph}{修正 AI 回答}{29}{paragraph*.18}%
+\contentsline {paragraph}{提交优质讲解案例}{30}{paragraph*.19}%
+\contentsline {paragraph}{查看接管记录}{31}{paragraph*.20}%
+\contentsline {subsubsection}{管理员用例}{32}{subsubsection*.21}%
+\contentsline {paragraph}{管理用户与权限}{33}{paragraph*.22}%
+\contentsline {paragraph}{上传知识文档}{34}{paragraph*.23}%
+\contentsline {paragraph}{审核知识内容}{35}{paragraph*.24}%
+\contentsline {paragraph}{维护术语表}{36}{paragraph*.25}%
+\contentsline {paragraph}{维护知识图谱}{37}{paragraph*.26}%
+\contentsline {paragraph}{查看模型调用日志}{38}{paragraph*.27}%
+\contentsline {paragraph}{管理用户反馈}{39}{paragraph*.28}%
+\contentsline {section}{\numberline {1.5}需求分析——数据建模}{40}{section.1.5}%
+\contentsline {subsection}{\numberline {1.5.1}系统 ER 图}{40}{subsection.1.5.1}%
+\contentsline {subsection}{\numberline {1.5.2}系统总体 UML 类图}{41}{subsection.1.5.2}%
+\contentsline {subsection}{\numberline {1.5.3}各子系统核心类图}{42}{subsection.1.5.3}%
+\contentsline {subsubsection}{用户与权限管理子系统类图}{42}{subsubsection*.29}%
+\contentsline {subsubsection}{智能导览子系统类图}{43}{subsubsection*.30}%
+\contentsline {subsubsection}{知识库管理子系统类图}{44}{subsubsection*.31}%
+\contentsline {subsubsection}{AI 导游实训子系统类图}{45}{subsubsection*.32}%
+\contentsline {subsubsection}{真人导游协同子系统类图}{46}{subsubsection*.33}%
+\contentsline {subsection}{\numberline {1.5.4}核心数据字典}{47}{subsection.1.5.4}%
+\contentsline {section}{\numberline {1.6}需求分析——行为建模}{48}{section.1.6}%
+\contentsline {subsection}{\numberline {1.6.1}用户与权限管理流程}{48}{subsection.1.6.1}%
+\contentsline {subsection}{\numberline {1.6.2}智能导览流程}{49}{subsection.1.6.2}%
+\contentsline {subsection}{\numberline {1.6.3}图片识别问答流程}{50}{subsection.1.6.3}%
+\contentsline {subsection}{\numberline {1.6.4}知识库管理流程}{51}{subsection.1.6.4}%
+\contentsline {subsection}{\numberline {1.6.5}AI 导游实训流程}{52}{subsection.1.6.5}%
+\contentsline {subsection}{\numberline {1.6.6}真人导游协同流程}{53}{subsection.1.6.6}%
+\contentsline {subsection}{\numberline {1.6.7}反馈与日志处理流程}{54}{subsection.1.6.7}%
+\contentsline {section}{\numberline {1.7}需求追踪矩阵}{55}{section.1.7}%
+\contentsline {chapter}{\numberline {第二章\hspace {.3em}}系统设计文档}{57}{chapter.2}%
+\contentsline {section}{\numberline {2.1}引言}{57}{section.2.1}%
+\contentsline {subsection}{\numberline {2.1.1}设计目标}{57}{subsection.2.1.1}%
+\contentsline {subsection}{\numberline {2.1.2}设计依据}{57}{subsection.2.1.2}%
+\contentsline {subsection}{\numberline {2.1.3}设计原则}{57}{subsection.2.1.3}%
+\contentsline {subsection}{\numberline {2.1.4}系统运行能力}{58}{subsection.2.1.4}%
+\contentsline {section}{\numberline {2.2}概要设计}{59}{section.2.2}%
+\contentsline {subsection}{\numberline {2.2.1}系统总体架构}{59}{subsection.2.2.1}%
+\contentsline {subsection}{\numberline {2.2.2}总体技术选型}{60}{subsection.2.2.2}%
+\contentsline {subsection}{\numberline {2.2.3}子系统划分}{61}{subsection.2.2.3}%
+\contentsline {subsection}{\numberline {2.2.4}系统软件结构设计}{61}{subsection.2.2.4}%
+\contentsline {subsection}{\numberline {2.2.5}部署概要设计}{63}{subsection.2.2.5}%
+\contentsline {subsection}{\numberline {2.2.6}关键业务流程概要}{64}{subsection.2.2.6}%
+\contentsline {subsubsection}{智能导览流程}{64}{subsubsection*.34}%
+\contentsline {subsubsection}{知识库管理流程}{65}{subsubsection*.35}%
+\contentsline {subsubsection}{AI 导游实训流程}{66}{subsubsection*.36}%
+\contentsline {subsubsection}{真人导游协同流程}{67}{subsubsection*.37}%
+\contentsline {section}{\numberline {2.3}详细设计}{68}{section.2.3}%
+\contentsline {subsection}{\numberline {2.3.1}总体类结构设计}{68}{subsection.2.3.1}%
+\contentsline {subsection}{\numberline {2.3.2}用户与权限子系统详细设计}{69}{subsection.2.3.2}%
+\contentsline {subsubsection}{类图}{69}{subsubsection*.38}%
+\contentsline {subsubsection}{类职责}{69}{subsubsection*.39}%
+\contentsline {subsubsection}{权限矩阵}{70}{subsubsection*.40}%
+\contentsline {subsection}{\numberline {2.3.3}智能导览子系统详细设计}{70}{subsection.2.3.3}%
+\contentsline {subsubsection}{类图}{70}{subsubsection*.41}%
+\contentsline {subsubsection}{模块职责}{71}{subsubsection*.42}%
+\contentsline {subsubsection}{核心处理规则}{71}{subsubsection*.43}%
+\contentsline {subsection}{\numberline {2.3.4}知识库管理子系统详细设计}{72}{subsection.2.3.4}%
+\contentsline {subsubsection}{类图}{72}{subsubsection*.44}%
+\contentsline {subsubsection}{知识入库状态机}{72}{subsubsection*.45}%
+\contentsline {subsubsection}{知识切片元数据}{73}{subsubsection*.46}%
+\contentsline {subsection}{\numberline {2.3.5}AI 导游实训子系统详细设计}{73}{subsection.2.3.5}%
+\contentsline {subsubsection}{类图}{73}{subsubsection*.47}%
+\contentsline {subsubsection}{训练场景设计}{74}{subsubsection*.48}%
+\contentsline {subsubsection}{评分维度}{74}{subsubsection*.49}%
+\contentsline {subsubsection}{实训评分增强设计}{75}{subsubsection*.50}%
+\contentsline {subsection}{\numberline {2.3.6}真人导游协同子系统详细设计}{76}{subsection.2.3.6}%
+\contentsline {subsubsection}{类图}{76}{subsubsection*.51}%
+\contentsline {subsubsection}{协同规则}{76}{subsubsection*.52}%
+\contentsline {subsection}{\numberline {2.3.7}接口详细设计}{76}{subsection.2.3.7}%
+\contentsline {subsubsection}{客户端 API 接口}{76}{subsubsection*.53}%
+\contentsline {subsubsection}{系统接口映射}{78}{subsubsection*.54}%
+\contentsline {subsubsection}{界面设计}{78}{subsubsection*.55}%
+\contentsline {paragraph}{游客端界面截图预留}{81}{figure.2.17}%
+\contentsline {paragraph}{学生端界面截图预留}{83}{figure.2.21}%
+\contentsline {paragraph}{导游端界面截图预留}{84}{figure.2.24}%
+\contentsline {paragraph}{管理端界面截图预留}{86}{figure.2.29}%
+\contentsline {paragraph}{监控端界面截图预留}{87}{figure.2.31}%
+\contentsline {subsubsection}{内部服务接口}{87}{subsubsection*.61}%
+\contentsline {subsubsection}{模型适配接口}{88}{subsubsection*.62}%
+\contentsline {subsection}{\numberline {2.3.8}数据存储详细设计}{89}{subsection.2.3.8}%
+\contentsline {subsubsection}{核心 ER 关系}{89}{subsubsection*.63}%
+\contentsline {subsubsection}{数据库表设计}{90}{subsubsection*.64}%
+\contentsline {subsubsection}{非关系数据设计}{95}{subsubsection*.65}%
+\contentsline {subsection}{\numberline {2.3.9}异常与安全设计}{96}{subsection.2.3.9}%
+\contentsline {subsubsection}{异常处理表}{96}{subsubsection*.66}%
+\contentsline {subsubsection}{安全控制}{96}{subsubsection*.67}%
+\contentsline {subsection}{\numberline {2.3.10}可观测性与维护设计}{97}{subsection.2.3.10}%
+\contentsline {subsection}{\numberline {2.3.11}设计约束与运行保障}{97}{subsection.2.3.11}%
+\contentsline {chapter}{\numberline {第三章\hspace {.3em}}软件测试文档}{98}{chapter.3}%
+\contentsline {section}{\numberline {3.1}测试概述}{98}{section.3.1}%
+\contentsline {subsection}{\numberline {3.1.1}测试目标}{98}{subsection.3.1.1}%
+\contentsline {subsection}{\numberline {3.1.2}测试范围}{98}{subsection.3.1.2}%
+\contentsline {subsection}{\numberline {3.1.3}测试环境}{99}{subsection.3.1.3}%
+\contentsline {subsection}{\numberline {3.1.4}测试准入与准出}{99}{subsection.3.1.4}%
+\contentsline {section}{\numberline {3.2}测试执行方式}{101}{section.3.2}%
+\contentsline {subsection}{\numberline {3.2.1}测试级别}{101}{subsection.3.2.1}%
+\contentsline {subsection}{\numberline {3.2.2}测试类型覆盖}{101}{subsection.3.2.2}%
+\contentsline {section}{\numberline {3.3}单元测试执行内容}{103}{section.3.3}%
+\contentsline {subsection}{\numberline {3.3.1}单元测试覆盖内容}{103}{subsection.3.3.1}%
+\contentsline {subsection}{\numberline {3.3.2}单元测试结果}{103}{subsection.3.3.2}%
+\contentsline {section}{\numberline {3.4}集成测试执行内容}{105}{section.3.4}%
+\contentsline {subsection}{\numberline {3.4.1}集成测试覆盖内容}{105}{subsection.3.4.1}%
+\contentsline {subsection}{\numberline {3.4.2}集成测试数据}{106}{subsection.3.4.2}%
+\contentsline {section}{\numberline {3.5}接口测试执行内容}{107}{section.3.5}%
+\contentsline {subsection}{\numberline {3.5.1}接口测试覆盖内容}{107}{subsection.3.5.1}%
+\contentsline {section}{\numberline {3.6}系统测试执行内容}{108}{section.3.6}%
+\contentsline {subsection}{\numberline {3.6.1}核心功能测试结果}{108}{subsection.3.6.1}%
+\contentsline {subsection}{\numberline {3.6.2}异常与边界测试结果}{109}{subsection.3.6.2}%
+\contentsline {section}{\numberline {3.7}非功能测试}{111}{section.3.7}%
+\contentsline {subsection}{\numberline {3.7.1}性能测试}{111}{subsection.3.7.1}%
+\contentsline {subsection}{\numberline {3.7.2}安全测试}{111}{subsection.3.7.2}%
+\contentsline {subsection}{\numberline {3.7.3}兼容性与可用性测试}{112}{subsection.3.7.3}%
+\contentsline {section}{\numberline {3.8}测试执行与记录}{113}{section.3.8}%
+\contentsline {subsection}{\numberline {3.8.1}测试流程}{113}{subsection.3.8.1}%
+\contentsline {subsection}{\numberline {3.8.2}测试记录表}{113}{subsection.3.8.2}%
+\contentsline {subsection}{\numberline {3.8.3}回归测试}{113}{subsection.3.8.3}%
+\contentsline {section}{\numberline {3.9}缺陷管理}{114}{section.3.9}%
+\contentsline {subsection}{\numberline {3.9.1}缺陷分类}{114}{subsection.3.9.1}%
+\contentsline {subsection}{\numberline {3.9.2}缺陷等级}{114}{subsection.3.9.2}%
+\contentsline {subsection}{\numberline {3.9.3}缺陷修复流程}{114}{subsection.3.9.3}%
+\contentsline {section}{\numberline {3.10}测试结果汇总}{115}{section.3.10}%
+\contentsline {subsection}{\numberline {3.10.1}测试执行汇总}{115}{subsection.3.10.1}%
+\contentsline {subsection}{\numberline {3.10.2}功能测试结果}{115}{subsection.3.10.2}%
+\contentsline {subsection}{\numberline {3.10.3}接口测试结果}{115}{subsection.3.10.3}%
+\contentsline {subsection}{\numberline {3.10.4}非功能测试结果}{116}{subsection.3.10.4}%
+\contentsline {subsection}{\numberline {3.10.5}缺陷统计结果}{116}{subsection.3.10.5}%
+\contentsline {subsection}{\numberline {3.10.6}测试结果说明}{117}{subsection.3.10.6}%
+\contentsline {section}{\numberline {3.11}测试结论}{117}{section.3.11}%
+\contentsline {chapter}{\numberline {第四章\hspace {.3em}}用户使用说明书}{118}{chapter.4}%
+\contentsline {section}{\numberline {4.1}软件概述}{118}{section.4.1}%
+\contentsline {subsection}{\numberline {4.1.1}软件定位}{118}{subsection.4.1.1}%
+\contentsline {subsection}{\numberline {4.1.2}用户角色}{118}{subsection.4.1.2}%
+\contentsline {subsection}{\numberline {4.1.3}功能总览}{118}{subsection.4.1.3}%
+\contentsline {section}{\numberline {4.2}运行环境}{119}{section.4.2}%
+\contentsline {subsection}{\numberline {4.2.1}服务器端环境}{119}{subsection.4.2.1}%
+\contentsline {subsection}{\numberline {4.2.2}客户端环境}{120}{subsection.4.2.2}%
+\contentsline {subsection}{\numberline {4.2.3}首次使用准备}{120}{subsection.4.2.3}%
+\contentsline {section}{\numberline {4.3}各客户端进入方式}{120}{section.4.3}%
+\contentsline {subsection}{\numberline {4.3.1}统一登录入口}{120}{subsection.4.3.1}%
+\contentsline {subsection}{\numberline {4.3.2}游客端进入方式}{121}{subsection.4.3.2}%
+\contentsline {subsection}{\numberline {4.3.3}学生端进入方式}{121}{subsection.4.3.3}%
+\contentsline {subsection}{\numberline {4.3.4}导游端进入方式}{122}{subsection.4.3.4}%
+\contentsline {subsection}{\numberline {4.3.5}管理端进入方式}{122}{subsection.4.3.5}%
+\contentsline {section}{\numberline {4.4}游客端详细使用说明}{123}{section.4.4}%
+\contentsline {subsection}{\numberline {4.4.1}文本问答}{123}{subsection.4.4.1}%
+\contentsline {subsection}{\numberline {4.4.2}语音问答}{124}{subsection.4.4.2}%
+\contentsline {subsection}{\numberline {4.4.3}图片问答}{125}{subsection.4.4.3}%
+\contentsline {subsection}{\numberline {4.4.4}多语讲解}{125}{subsection.4.4.4}%
+\contentsline {subsection}{\numberline {4.4.5}路线推荐}{126}{subsection.4.4.5}%
+\contentsline {section}{\numberline {4.5}学生端详细使用说明}{127}{section.4.5}%
+\contentsline {subsection}{\numberline {4.5.1}选择训练场景}{127}{subsection.4.5.1}%
+\contentsline {subsection}{\numberline {4.5.2}完成虚拟游客问答}{127}{subsection.4.5.2}%
+\contentsline {subsection}{\numberline {4.5.3}查看评分报告}{128}{subsection.4.5.3}%
+\contentsline {subsection}{\numberline {4.5.4}查看训练历史}{129}{subsection.4.5.4}%
+\contentsline {section}{\numberline {4.6}导游端详细使用说明}{129}{section.4.6}%
+\contentsline {subsection}{\numberline {4.6.1}查看游客会话}{129}{subsection.4.6.1}%
+\contentsline {subsection}{\numberline {4.6.2}人工接管会话}{130}{subsection.4.6.2}%
+\contentsline {subsection}{\numberline {4.6.3}提交回答修正}{131}{subsection.4.6.3}%
+\contentsline {section}{\numberline {4.7}管理端详细使用说明}{131}{section.4.7}%
+\contentsline {subsection}{\numberline {4.7.1}用户与角色管理}{131}{subsection.4.7.1}%
+\contentsline {subsection}{\numberline {4.7.2}知识文档上传}{132}{subsection.4.7.2}%
+\contentsline {subsection}{\numberline {4.7.3}知识切片审核}{133}{subsection.4.7.3}%
+\contentsline {subsection}{\numberline {4.7.4}术语维护}{134}{subsection.4.7.4}%
+\contentsline {subsection}{\numberline {4.7.5}文化图谱维护}{134}{subsection.4.7.5}%
+\contentsline {subsection}{\numberline {4.7.6}日志查询}{135}{subsection.4.7.6}%
+\contentsline {subsection}{\numberline {4.7.7}系统运行状态查看}{136}{subsection.4.7.7}%
+\contentsline {section}{\numberline {4.8}常见操作问题}{136}{section.4.8}%
+\contentsline {subsection}{\numberline {4.8.1}登录失败}{136}{subsection.4.8.1}%
+\contentsline {subsection}{\numberline {4.8.2}无法录音或拍照}{136}{subsection.4.8.2}%
+\contentsline {subsection}{\numberline {4.8.3}问答结果为空}{137}{subsection.4.8.3}%
+\contentsline {subsection}{\numberline {4.8.4}上传失败}{137}{subsection.4.8.4}%
+\contentsline {subsection}{\numberline {4.8.5}训练报告未生成}{137}{subsection.4.8.5}%
+\contentsline {section}{\numberline {4.9}使用注意事项}{137}{section.4.9}%
+\contentsline {chapter}{\numberline {第五章\hspace {.3em}}版本记录与项目分工}{138}{chapter.5}%
+\contentsline {section}{\numberline {5.1}版本更新记录}{138}{section.5.1}%
+\contentsline {section}{\numberline {5.2}组员分工表}{139}{section.5.2}%
+\contentsline {section}{\numberline {5.3}协作与审核记录}{140}{section.5.3}%

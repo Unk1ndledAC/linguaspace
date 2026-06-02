@@ -1,0 +1,67 @@
+﻿@startuml
+title AI 导游实训子系统类图
+skinparam classAttributeIconSize 0
+
+class "训练场景 TrainingScenario" as Scenario {
+  - scenarioId: String
+  - name: String
+  - sceneType: String
+  - difficulty: Integer
+  - language: String
+  + loadScenario(): void
+  + updateDifficulty(level: Integer): void
+}
+
+class "虚拟游客 VirtualTourist" as VirtualTourist {
+  - touristId: String
+  - persona: String
+  - language: String
+  - questionStyle: String
+  + generateQuestion(scenario: TrainingScenario): String
+}
+
+class "训练记录 TrainingRecord" as Record {
+  - recordId: String
+  - studentId: String
+  - scenarioId: String
+  - transcript: String
+  - score: Float
+  + start(): void
+  + submitTranscript(text: String): void
+  + finish(): void
+}
+
+class "语音提交 SpeechSubmission" as Speech {
+  - submissionId: String
+  - recordId: String
+  - audioUrl: String
+  - transcript: String
+  + uploadAudio(): void
+  + transcribe(): String
+}
+
+class "训练报告 TrainingReport" as Report {
+  - reportId: String
+  - recordId: String
+  - totalScore: Float
+  - fluencyScore: Float
+  - knowledgeScore: Float
+  - suggestion: String
+  + generate(): void
+  + exportPdf(): File
+}
+
+class "评分服务 EvaluationService" as EvalService {
+  + scoreTranscript(text: String): Float
+  + evaluateFluency(audioUrl: String): Float
+  + generateAdvice(record: TrainingRecord): String
+}
+
+Scenario "1" --> "*" Record : 被训练
+Scenario "1" o-- "*" VirtualTourist : 配置
+Record "1" *-- "*" Speech : 包含
+Record "1" *-- "1" Report : 生成
+EvalService ..> Record : 评分
+EvalService ..> Speech : 语音评价
+EvalService ..> Report : 写入报告
+@enduml

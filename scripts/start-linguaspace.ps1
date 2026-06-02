@@ -34,7 +34,7 @@ function Test-CommandExists($command) {
 
 function Get-FreePort($startPort, $endPort) {
   for ($port = $startPort; $port -le $endPort; $port++) {
-    $inUse = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue
+    $inUse = Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue
     if (-not $inUse) {
       return $port
     }
@@ -84,10 +84,37 @@ function Assert-OllamaModel($model) {
   }
 }
 
+function Test-MySqlAppAccount {
+  $python = Join-Path $root "backend\.venv\Scripts\python.exe"
+  if (-not (Test-Path $python)) { return $false }
+  $probe = @"
+import os
+import pymysql
+connection = pymysql.connect(
+    host=os.environ["MYSQL_HOST"],
+    port=int(os.environ["MYSQL_PORT"]),
+    user=os.environ["MYSQL_USER"],
+    password=os.environ["MYSQL_PASSWORD"],
+    database=os.environ["MYSQL_DATABASE"],
+    connect_timeout=3,
+)
+with connection, connection.cursor() as cursor:
+    cursor.execute("SELECT 1")
+"@
+  $previousErrorActionPreference = $ErrorActionPreference
+  try {
+    $ErrorActionPreference = "Continue"
+    $probe | & $python - *> $null
+    return $LASTEXITCODE -eq 0
+  } finally {
+    $ErrorActionPreference = $previousErrorActionPreference
+  }
+}
+
 if (-not (Test-CommandExists "docker")) { throw "Docker is required for LinguaSpace acceptance startup." }
 if (-not (Test-CommandExists "ollama")) { throw "Ollama is required for LinguaSpace acceptance startup." }
 if ([string]::IsNullOrWhiteSpace($env:OLLAMA_BASE_URL)) { $env:OLLAMA_BASE_URL = "http://127.0.0.1:11434" }
-if ([string]::IsNullOrWhiteSpace($env:OLLAMA_MODEL)) { $env:OLLAMA_MODEL = "qwen3.5:0.8b" }
+if ([string]::IsNullOrWhiteSpace($env:OLLAMA_MODEL)) { $env:OLLAMA_MODEL = "qwen3.5:9b" }
 if ([string]::IsNullOrWhiteSpace($env:OLLAMA_VISION_MODEL)) { $env:OLLAMA_VISION_MODEL = "qwen3-vl:4b" }
 
 Write-Host "Starting Docker infrastructure..."
@@ -102,22 +129,27 @@ Wait-Ollama
 Assert-OllamaModel $env:OLLAMA_MODEL
 Assert-OllamaModel $env:OLLAMA_VISION_MODEL
 
-$alterSql = "ALTER USER '$($env:MYSQL_USER)'@'%' IDENTIFIED WITH mysql_native_password BY '$($env:MYSQL_PASSWORD)'; FLUSH PRIVILEGES;"
 $compose = Join-Path $root "docker-compose.yml"
-$exitCode = 0
-if ([string]::IsNullOrWhiteSpace($env:MYSQL_ROOT_PASSWORD)) {
-  & docker compose -f $compose exec -T mysql mysql -uroot -e $alterSql
-  $exitCode = $LASTEXITCODE
+$alterSql = "ALTER USER '$($env:MYSQL_USER)'@'%' IDENTIFIED WITH mysql_native_password BY '$($env:MYSQL_PASSWORD)'; FLUSH PRIVILEGES;"
+if (Test-MySqlAppAccount) {
+  Write-Host "MySQL application account is ready"
 } else {
-  & docker compose -f $compose exec -T mysql mysql -uroot -p$env:MYSQL_ROOT_PASSWORD -e $alterSql
-  $exitCode = $LASTEXITCODE
-  if ($exitCode -ne 0) {
+  Write-Host "MySQL application account needs repair; trying root credentials..."
+  $exitCode = 0
+  if ([string]::IsNullOrWhiteSpace($env:MYSQL_ROOT_PASSWORD)) {
     & docker compose -f $compose exec -T mysql mysql -uroot -e $alterSql
     $exitCode = $LASTEXITCODE
+  } else {
+    & docker compose -f $compose exec -T mysql mysql -uroot -p$env:MYSQL_ROOT_PASSWORD -e $alterSql
+    $exitCode = $LASTEXITCODE
+    if ($exitCode -ne 0) {
+      & docker compose -f $compose exec -T mysql mysql -uroot -e $alterSql
+      $exitCode = $LASTEXITCODE
+    }
   }
-}
-if ($exitCode -ne 0) {
-  throw "Failed to update MySQL auth plugin for user '$($env:MYSQL_USER)'. Set MYSQL_ROOT_PASSWORD and retry."
+  if ($exitCode -ne 0 -or -not (Test-MySqlAppAccount)) {
+    throw "MySQL application account '$($env:MYSQL_USER)' is unavailable and automatic repair failed. Set MYSQL_ROOT_PASSWORD and retry."
+  }
 }
 
 if (-not (Test-Path (Join-Path $root "backend\.venv\Scripts\python.exe"))) {

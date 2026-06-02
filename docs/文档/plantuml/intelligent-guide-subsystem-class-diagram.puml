@@ -1,0 +1,68 @@
+﻿@startuml
+title 智能导览子系统类图
+skinparam classAttributeIconSize 0
+
+class "导览会话 Session" as Session {
+  - sessionId: String
+  - userId: String
+  - scenicSpotId: String
+  - language: String
+  - createdAt: DateTime
+  + create(): void
+  + close(): void
+}
+
+class "消息记录 Message" as Message {
+  - messageId: String
+  - sessionId: String
+  - inputType: InputType
+  - question: String
+  - answer: String
+  - createdAt: DateTime
+  + saveQuestion(): void
+  + saveAnswer(answer: String): void
+}
+
+class "导览服务 GuideService" as GuideService {
+  + submitTextQuestion(question: String): Message
+  + submitVoiceQuestion(audioUrl: String): Message
+  + submitImageQuestion(imageUrl: String): Message
+  + generateExplanation(spotId: String): String
+}
+
+class "AI编排服务 AIOrchestrator" as AIOrchestrator {
+  + recognizeSpeech(audioUrl: String): String
+  + recognizeImage(imageUrl: String): String
+  + retrieveKnowledge(query: String): RetrievalResult
+  + generateAnswer(query: String): String
+  + translate(answer: String, language: String): String
+}
+
+class "路线方案 RoutePlan" as RoutePlan {
+  - planId: String
+  - sessionId: String
+  - startPoint: String
+  - endPoint: String
+  - estimatedTime: Integer
+  + generateRoute(): void
+  + updatePreference(preference: RoutePreference): void
+}
+
+class "用户反馈 Feedback" as Feedback {
+  - feedbackId: String
+  - messageId: String
+  - score: Integer
+  - content: String
+  - status: FeedbackStatus
+  + submit(): void
+  + markProcessed(): void
+}
+
+Session "1" *-- "*" Message : 包含
+Session "1" o-- "*" RoutePlan : 生成
+Message "1" o-- "*" Feedback : 接收
+GuideService ..> Session : 维护会话
+GuideService ..> Message : 保存问答
+GuideService ..> AIOrchestrator : 调用AI能力
+GuideService ..> RoutePlan : 推荐路线
+@enduml

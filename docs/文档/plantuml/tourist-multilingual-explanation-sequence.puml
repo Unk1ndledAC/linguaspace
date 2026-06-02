@@ -1,0 +1,20 @@
+﻿@startuml
+title 游客查看多语讲解顺序图（BCE）
+actor 游客
+boundary "游客端讲解界面" as UI <<boundary>>
+control "多语讲解控制器" as ExplainCtl <<control>>
+entity "知识片段" as Chunk <<entity>>
+entity "术语表" as Term <<entity>>
+participant "翻译工具" as Trans <<utility>>
+
+游客 -> UI : 选择景点/主题/目标语言
+UI -> ExplainCtl : requestExplanation(topic, language)
+ExplainCtl -> Chunk : findReviewedContent(topic)
+Chunk --> ExplainCtl : content
+ExplainCtl -> Term : loadTerms(topic, language)
+Term --> ExplainCtl : termRules
+ExplainCtl -> Trans : translateWithTerms(content, termRules)
+Trans --> ExplainCtl : translatedContent
+ExplainCtl --> UI : displayExplanation(translatedContent)
+UI --> 游客 : 展示多语讲解
+@enduml

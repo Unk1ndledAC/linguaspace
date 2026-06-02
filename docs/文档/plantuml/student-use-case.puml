@@ -1,0 +1,14 @@
+﻿@startuml
+title 学生用例图
+left to right direction
+actor 学生
+rectangle "学生实训端" {
+  学生 -- (选择实训场景)
+  学生 -- (与虚拟游客对话)
+  学生 -- (提交语音讲解)
+  学生 -- (查看训练报告)
+  学生 -- (查看训练历史)
+  (提交语音讲解) ..> (语音转写) : include
+  (查看训练报告) ..> (评分结果生成) : include
+}
+@enduml

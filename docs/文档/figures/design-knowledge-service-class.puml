@@ -1,0 +1,81 @@
+@startuml
+skinparam dpi 160
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+title 知识库管理服务类图
+
+class KnowledgeController {
+  -documentParser: DocumentParser
+  -chunkingService: ChunkingService
+  -reviewService: ReviewService
+  -termService: TermService
+  +uploadDocument(file: File, metadata: MetadataDTO): DocumentDTO
+  +searchKnowledge(request: SearchDTO): SearchResultDTO
+  +submitReviewDecision(taskId: UUID, decision: ReviewDecision): void
+}
+class DocumentParser {
+  +fileType: String
+  +maxFileSize: Integer
+  +parse(file: File): ParsedDocument
+  +extractMetadata(file: File): MetadataDTO
+  +validateFormat(file: File): Boolean
+}
+class ChunkingService {
+  +chunkSize: Integer
+  +overlapSize: Integer
+  +cleanText(text: String): String
+  +splitIntoChunks(document: ParsedDocument): List<KnowledgeChunk>
+  +assignTopicTags(chunk: KnowledgeChunk): void
+}
+class ReviewService {
+  -knowledgeRepository: KnowledgeRepository
+  -reviewTaskRepository: ReviewTaskRepository
+  -vectorIndexService: VectorIndexService
+  +createTask(documentId: UUID): ReviewTask
+  +approve(taskId: UUID, reviewerId: UUID): void
+  +reject(taskId: UUID, reason: String): void
+  +publishReviewedChunks(documentId: UUID): void
+}
+class VectorIndexService {
+  -embeddingAdapter: EmbeddingAdapter
+  +embed(chunk: KnowledgeChunk): Vector
+  +upsert(chunk: KnowledgeChunk, vector: Vector): void
+  +delete(chunkId: UUID): void
+  +search(query: String, topK: Integer): List<KnowledgeChunk>
+}
+class TermService {
+  -termRepository: TermRepository
+  +upsertTerm(term: TermDTO): Term
+  +matchTerm(text: String, language: String): List<Term>
+  +normalizeTranslation(text: String): String
+}
+class KnowledgeGraphService {
+  -graphRepository: GraphRepository
+  +upsertEntity(entity: GraphEntityDTO): GraphEntity
+  +upsertRelation(relation: GraphRelationDTO): void
+  +querySubgraph(entityName: String): GraphContext
+}
+class KnowledgeRepository {
+  -dataSource: PostgreSQL
+  -vectorCollection: String
+  +saveDocument(document: KnowledgeDocument): KnowledgeDocument
+  +saveChunks(chunks: List<KnowledgeChunk>): void
+  +findReviewedChunks(query: String): List<KnowledgeChunk>
+}
+class ReviewTaskRepository {
+  -dataSource: PostgreSQL
+  -tableName: String
+  +save(task: ReviewTask): ReviewTask
+  +findPending(): List<ReviewTask>
+  +updateDecision(taskId: UUID, decision: ReviewDecision): void
+}
+
+KnowledgeController --> DocumentParser
+KnowledgeController --> ChunkingService
+KnowledgeController --> ReviewService
+ReviewService --> VectorIndexService
+ReviewService --> KnowledgeRepository
+ReviewService --> ReviewTaskRepository
+KnowledgeController --> TermService
+KnowledgeController --> KnowledgeGraphService
+@enduml

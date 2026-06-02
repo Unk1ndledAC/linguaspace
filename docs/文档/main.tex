@@ -1,0 +1,48 @@
+\documentclass[UTF8,a4paper,12pt]{ctexrep}
+
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{seqsplit}
+
+\geometry{
+  left=2.8cm,
+  right=2.8cm,
+  top=2.6cm,
+  bottom=2.6cm
+}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=blue,
+  citecolor=black
+}
+
+\setlist[itemize]{leftmargin=2em}
+\setlist[enumerate]{leftmargin=2em}
+\setlength{\emergencystretch}{3em}
+\newcommand{\code}[1]{\begingroup\ttfamily\scriptsize\expandafter\seqsplit\expandafter{\detokenize{#1}}\endgroup}
+
+\title{语界 LinguaSpace 软件工程综合报告}
+\author{项目文档组}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\input{chapters/requirements}
+\input{chapters/system_design}
+\input{chapters/test_document}
+\input{chapters/user_manual}
+\input{chapters/project_record}
+
+\end{document}

@@ -1,0 +1,24 @@
+﻿@startuml
+title 管理员查看模型调用日志顺序图（BCE）
+actor 管理员
+boundary "管理端日志界面" as UI <<boundary>>
+control "日志查询控制器" as LogCtl <<control>>
+entity "模型调用日志" as Log <<entity>>
+entity "消息记录" as Message <<entity>>
+participant "日志脱敏工具" as Masker <<utility>>
+
+管理员 -> UI : 输入筛选条件
+UI -> LogCtl : queryLogs(filters)
+LogCtl -> Log : query(filters)
+Log --> LogCtl : logList
+LogCtl -> Masker : maskSensitiveFields(logList)
+Masker --> LogCtl : safeLogList
+LogCtl --> UI : showLogs(safeLogList)
+管理员 -> UI : 查看日志详情
+UI -> LogCtl : getLogDetail(logId)
+LogCtl -> Log : loadDetail(logId)
+LogCtl -> Message : loadRelatedMessage(messageId)
+Message --> LogCtl : messageDetail
+Log --> LogCtl : logDetail
+LogCtl --> UI : showLogDetail(logDetail, messageDetail)
+@enduml

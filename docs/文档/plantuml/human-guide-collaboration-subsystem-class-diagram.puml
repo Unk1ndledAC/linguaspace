@@ -1,0 +1,70 @@
+﻿@startuml
+title 真人导游协同子系统类图
+skinparam classAttributeIconSize 0
+
+class "接管记录 TakeoverRecord" as Takeover {
+  - takeoverId: String
+  - guideId: String
+  - sessionId: String
+  - startTime: DateTime
+  - endTime: DateTime
+  - status: TakeoverStatus
+  + startTakeover(): void
+  + endTakeover(): void
+}
+
+class "导游修正 GuideCorrection" as Correction {
+  - correctionId: String
+  - guideId: String
+  - messageId: String
+  - correctedContent: String
+  - reviewStatus: ReviewStatus
+  + submitCorrection(): void
+  + updateCorrection(content: String): void
+}
+
+class "优质案例 CaseLibrary" as CaseLibrary {
+  - caseId: String
+  - guideId: String
+  - title: String
+  - content: String
+  - status: ReviewStatus
+  + submitCase(): void
+  + publishCase(): void
+}
+
+class "模型调用日志 ModelCallLog" as Log {
+  - logId: String
+  - requestId: String
+  - modelName: String
+  - retrievalSource: String
+  - status: CallStatus
+  + recordCall(): void
+  + markFailed(error: String): void
+}
+
+class "审核任务 ReviewTask" as ReviewTask {
+  - taskId: String
+  - objectType: String
+  - objectId: String
+  - status: ReviewStatus
+  + approve(): void
+  + reject(reason: String): void
+}
+
+class "导游协同服务 GuideCollaborationService" as CollabService {
+  + getSessionSummary(sessionId: String): String
+  + takeoverSession(sessionId: String): TakeoverRecord
+  + correctAnswer(messageId: String, content: String): GuideCorrection
+  + submitCase(content: String): CaseLibrary
+}
+
+Takeover "*" --> "1" CollabService : 由服务创建
+Correction "*" --> "1" CollabService : 由服务提交
+CaseLibrary "*" --> "1" CollabService : 由服务沉淀
+Correction "1" o-- "*" ReviewTask : 触发审核
+CaseLibrary "1" o-- "*" ReviewTask : 触发审核
+CollabService ..> Log : 查询调用链
+CollabService ..> Takeover : 管理接管
+CollabService ..> Correction : 管理修正
+@enduml

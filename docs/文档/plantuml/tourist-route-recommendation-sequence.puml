@@ -1,0 +1,22 @@
+﻿@startuml
+title 游客获取路线推荐顺序图（BCE）
+actor 游客
+boundary "游客端路线界面" as UI <<boundary>>
+control "路线推荐控制器" as RouteCtl <<control>>
+entity "景点资料" as Spot <<entity>>
+entity "路线记录" as Route <<entity>>
+entity "文化关系" as Relation <<entity>>
+participant "图谱查询工具" as GraphTool <<utility>>
+
+游客 -> UI : 输入位置、时间、兴趣偏好
+UI -> RouteCtl : requestRoute(location, time, interests)
+RouteCtl -> Spot : queryCandidateSpots(location, interests)
+Spot --> RouteCtl : candidateSpots
+RouteCtl -> GraphTool : queryCultureRelations(candidateSpots)
+GraphTool -> Relation : findRelations()
+Relation --> GraphTool : relations
+GraphTool --> RouteCtl : relationResult
+RouteCtl -> Route : saveRecommendation(condition, result)
+RouteCtl --> UI : displayRoute(result)
+UI --> 游客 : 展示路线建议
+@enduml

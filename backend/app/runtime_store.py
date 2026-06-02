@@ -73,6 +73,36 @@ SCHEMA = [
     """CREATE TABLE IF NOT EXISTS request_traces (
         id VARCHAR(64) PRIMARY KEY, session_id VARCHAR(64), question TEXT,
         language VARCHAR(24), pipeline_json LONGTEXT, created_at VARCHAR(40) NOT NULL)""",
+    """CREATE TABLE IF NOT EXISTS favorites (
+        id VARCHAR(64) PRIMARY KEY, session_id VARCHAR(64), item_type VARCHAR(48),
+        item_id VARCHAR(128), title VARCHAR(255), created_at VARCHAR(40) NOT NULL)""",
+    """CREATE TABLE IF NOT EXISTS takeover_logs (
+        id VARCHAR(64) PRIMARY KEY, session_id VARCHAR(64), action VARCHAR(48),
+        guide_id VARCHAR(64), note TEXT, created_at VARCHAR(40) NOT NULL)""",
+    """CREATE TABLE IF NOT EXISTS guide_profiles (
+        id VARCHAR(64) PRIMARY KEY, display_name VARCHAR(128), bio TEXT,
+        languages_json TEXT, specialties_json TEXT,
+        created_at VARCHAR(40) NOT NULL, updated_at VARCHAR(40) NOT NULL)""",
+    """CREATE TABLE IF NOT EXISTS knowledge_documents (
+        id VARCHAR(64) PRIMARY KEY, title VARCHAR(255), source VARCHAR(255),
+        tags_json TEXT, content LONGTEXT, status VARCHAR(32), vector_status VARCHAR(32),
+        created_at VARCHAR(40) NOT NULL, updated_at VARCHAR(40) NOT NULL)""",
+    """CREATE TABLE IF NOT EXISTS knowledge_chunks (
+        id VARCHAR(64) PRIMARY KEY, document_id VARCHAR(64), title VARCHAR(255),
+        content LONGTEXT, tags_json TEXT, status VARCHAR(32), vector_status VARCHAR(32),
+        created_at VARCHAR(40) NOT NULL, updated_at VARCHAR(40) NOT NULL)""",
+    """CREATE TABLE IF NOT EXISTS roles (
+        id VARCHAR(64) PRIMARY KEY, name VARCHAR(128), description TEXT,
+        created_at VARCHAR(40) NOT NULL, updated_at VARCHAR(40) NOT NULL)""",
+    """CREATE TABLE IF NOT EXISTS permissions (
+        id VARCHAR(64) PRIMARY KEY, name VARCHAR(128), module VARCHAR(64),
+        created_at VARCHAR(40) NOT NULL)""",
+    """CREATE TABLE IF NOT EXISTS role_permissions (
+        id VARCHAR(64) PRIMARY KEY, role_id VARCHAR(64), permission_id VARCHAR(64),
+        created_at VARCHAR(40) NOT NULL)""",
+    """CREATE TABLE IF NOT EXISTS system_settings (
+        id VARCHAR(64) PRIMARY KEY, values_json LONGTEXT,
+        created_at VARCHAR(40) NOT NULL, updated_at VARCHAR(40) NOT NULL)""",
 ]
 
 
@@ -86,6 +116,9 @@ class RuntimeStore:
         self.mysql_ok = self._ensure_schema()
         self._seed_users()
         self._seed_terms()
+        self._seed_guide_profile()
+        self._seed_roles_permissions()
+        self._seed_system_settings()
 
     def _ensure_schema(self) -> bool:
         with store._connect() as connection, connection.cursor() as cursor:
@@ -119,6 +152,19 @@ class RuntimeStore:
             cursor.execute(f"DELETE FROM `{table}` WHERE id=%s", (item_id,))
             connection.commit()
 
+    def _delete_where(self, table: str, column: str, value: str) -> None:
+        with store._connect() as connection, connection.cursor() as cursor:
+            cursor.execute(f"DELETE FROM `{table}` WHERE `{column}`=%s", (value,))
+            connection.commit()
+
+    def _find(self, table: str, item_id: str) -> dict[str, Any]:
+        with store._connect() as connection, connection.cursor() as cursor:
+            cursor.execute(f"SELECT * FROM `{table}` WHERE id=%s", (item_id,))
+            row = cursor.fetchone()
+        if not row:
+            raise KeyError(item_id)
+        return row
+
     def _seed_users(self) -> None:
         if self._all("users"):
             return
@@ -130,6 +176,42 @@ class RuntimeStore:
             return
         for zh, en, scene in (("大理古城", "Dali Ancient Town", "景点"), ("丽江古城", "Lijiang Old Town", "景点"), ("白族", "Bai ethnic group", "民族"), ("三道茶", "Three-course Tea Ceremony", "礼仪"), ("泼水节", "Water Splashing Festival", "节庆"), ("过桥米线", "Crossing-the-Bridge Rice Noodles", "饮食")):
             self.add_term(zh, "en", en, scene)
+
+    def _seed_guide_profile(self) -> None:
+        if self._all("guide_profiles"):
+            return
+        now = _now()
+        self._insert("guide_profiles", {"id": "guide", "display_name": "LinguaSpace 导游", "bio": "负责人工接管、文化解释与知识纠偏。", "languages_json": json.dumps(["中文", "English"], ensure_ascii=False), "specialties_json": json.dumps(["云南文化", "行程协同", "风险提示"], ensure_ascii=False), "created_at": now, "updated_at": now})
+
+    def _seed_roles_permissions(self) -> None:
+        if not self._all("permissions"):
+            for permission_id, name, module in (
+                ("tourist.read", "游客端浏览", "tourist"),
+                ("tourist.chat", "游客端问答", "tourist"),
+                ("guide.collaborate", "导游协同", "guide"),
+                ("knowledge.manage", "知识工程管理", "knowledge"),
+                ("system.manage", "系统管理", "system"),
+            ):
+                self._insert("permissions", {"id": permission_id, "name": name, "module": module, "created_at": _now()})
+        if not self._all("roles"):
+            roles = (
+                ("tourist", "游客", "使用行程、问答与收藏功能", ["tourist.read", "tourist.chat"]),
+                ("student", "学员", "使用游客能力与实训功能", ["tourist.read", "tourist.chat"]),
+                ("guide", "导游", "处理人工接管与知识纠偏", ["tourist.read", "tourist.chat", "guide.collaborate"]),
+                ("admin", "管理员", "管理知识工程和系统配置", ["tourist.read", "tourist.chat", "guide.collaborate", "knowledge.manage", "system.manage"]),
+            )
+            for role_id, name, description, permissions in roles:
+                now = _now()
+                self._insert("roles", {"id": role_id, "name": name, "description": description, "created_at": now, "updated_at": now})
+                for permission_id in permissions:
+                    self._insert("role_permissions", {"id": f"{role_id}:{permission_id}", "role_id": role_id, "permission_id": permission_id, "created_at": now})
+
+    def _seed_system_settings(self) -> None:
+        if self._all("system_settings"):
+            return
+        now = _now()
+        values = {"app_name": settings.app_name, "default_language": "zh", "rag_min_score": settings.rag_min_score, "rag_min_sources": settings.rag_min_sources, "weather_provider": "", "weather_note": "未配置天气服务提供方"}
+        self._insert("system_settings", {"id": "default", "values_json": json.dumps(values, ensure_ascii=False), "created_at": now, "updated_at": now})
 
     def login(self, username: str, password: str) -> dict[str, Any] | None:
         for user in self._all("users"):
@@ -143,6 +225,14 @@ class RuntimeStore:
         if role not in ("tourist", "student", "guide", "admin"):
             raise ValueError(role)
         return self._insert("users", {"id": uuid.uuid4().hex, "username": username, "password": _hash_password(password), "display_name": display_name or username, "role": role, "language": language, "status": "active", "created_at": _now()})
+
+    def update_user(self, user_id: str, display_name: str, role: str, language: str, status: str) -> dict[str, Any]:
+        if role not in ("tourist", "student", "guide", "admin"):
+            raise ValueError(role)
+        if status not in ("active", "disabled", "locked"):
+            raise ValueError(status)
+        self._find("users", user_id)
+        return self._update("users", user_id, {"display_name": display_name, "role": role, "language": language, "status": status})
 
     def create_session(self, language: str = "zh", location: str | None = None, visitor_name: str = "匿名游客") -> dict[str, Any]:
         now = _now()
@@ -161,10 +251,17 @@ class RuntimeStore:
             related = [message for message in messages if message["session_id"] == session["id"]]
             session["messages"] = related
             session["last_question"] = next((message["question"] for message in related if message.get("question")), "")
+        sessions.sort(key=lambda session: session.get("updated_at") or session.get("created_at") or "", reverse=True)
         return sessions
 
+    def update_session(self, session_id: str, changes: dict[str, Any]) -> dict[str, Any]:
+        self.get_session(session_id)
+        return self._update("guide_sessions", session_id, {**changes, "updated_at": _now()})
+
     def record_message(self, session_id: str, role: str, input_type: str, question: str = "", answer: str = "", sources: list[dict[str, Any]] | None = None, reliable: bool = False, model: str = "", provider: str = "") -> dict[str, Any]:
-        return self._insert("messages", {"id": uuid.uuid4().hex, "session_id": session_id, "role": role, "input_type": input_type, "question": question, "answer": answer, "sources_json": json.dumps(sources or [], ensure_ascii=False), "reliable": int(reliable), "model": model, "provider": provider, "created_at": _now()})
+        message = self._insert("messages", {"id": uuid.uuid4().hex, "session_id": session_id, "role": role, "input_type": input_type, "question": question, "answer": answer, "sources_json": json.dumps(sources or [], ensure_ascii=False), "reliable": int(reliable), "model": model, "provider": provider, "created_at": _now()})
+        self._update("guide_sessions", session_id, {"updated_at": _now()})
+        return message
 
     def log_model(self, capability: str, provider: str, model: str, prompt: str, latency_ms: int, status: str = "success", error: str = "") -> dict[str, Any]:
         return self._insert("model_call_logs", {"id": uuid.uuid4().hex, "request_id": uuid.uuid4().hex, "capability": capability, "provider": provider, "model": model, "prompt_summary": prompt[:500], "latency_ms": latency_ms, "status": status, "error_message": error, "created_at": _now()})
@@ -175,6 +272,12 @@ class RuntimeStore:
 
     def create_document_reviews(self, title: str, content: str, source: str, tags: list[str]) -> dict[str, Any]:
         document_id = uuid.uuid4().hex
+        now = _now()
+        self._insert("knowledge_documents", {"id": document_id, "title": title, "source": source, "tags_json": json.dumps(tags, ensure_ascii=False), "content": content, "status": "pending_review", "vector_status": "pending", "created_at": now, "updated_at": now})
+        tasks = self._replace_document_chunks(document_id, title, content, source, tags)
+        return {"document_id": document_id, "title": title, "source": source, "chunk_count": len(tasks), "tasks": tasks, "status": "pending_review"}
+
+    def _replace_document_chunks(self, document_id: str, title: str, content: str, source: str, tags: list[str]) -> list[dict[str, Any]]:
         blocks = [block.strip() for block in content.replace("\r", "").split("\n\n") if block.strip()]
         chunks: list[str] = []
         for block in blocks or [content]:
@@ -183,8 +286,59 @@ class RuntimeStore:
                 block = block[650:]
             if block:
                 chunks.append(block)
-        tasks = [self.create_review("document", f"{document_id}-{index + 1}", f"{title} #{index + 1}", chunk, source, tags) for index, chunk in enumerate(chunks)]
-        return {"document_id": document_id, "title": title, "source": source, "chunk_count": len(tasks), "tasks": tasks, "status": "pending_review"}
+        self._delete_where("knowledge_chunks", "document_id", document_id)
+        tasks = []
+        for index, content_chunk in enumerate(chunks):
+            now = _now()
+            chunk_id = f"{document_id}-{index + 1}"
+            self._insert("knowledge_chunks", {"id": chunk_id, "document_id": document_id, "title": f"{title} #{index + 1}", "content": content_chunk, "tags_json": json.dumps(tags, ensure_ascii=False), "status": "pending_review", "vector_status": "pending", "created_at": now, "updated_at": now})
+            tasks.append(self.create_review("document", chunk_id, f"{title} #{index + 1}", content_chunk, source, tags))
+        return tasks
+
+    def list_documents(self) -> list[dict[str, Any]]:
+        items = self._all("knowledge_documents")
+        chunks = self._all("knowledge_chunks", 2000)
+        for item in items:
+            item["tags"] = json.loads(item.get("tags_json") or "[]")
+            item["chunk_count"] = len([chunk for chunk in chunks if chunk["document_id"] == item["id"]])
+        return items
+
+    def delete_document(self, document_id: str) -> None:
+        self._find("knowledge_documents", document_id)
+        self._delete_where("knowledge_chunks", "document_id", document_id)
+        self._delete("knowledge_documents", document_id)
+
+    def split_document(self, document_id: str) -> dict[str, Any]:
+        document = self._find("knowledge_documents", document_id)
+        tasks = self._replace_document_chunks(document_id, document["title"], document["content"], document["source"], json.loads(document.get("tags_json") or "[]"))
+        self._update("knowledge_documents", document_id, {"status": "pending_review", "vector_status": "pending", "updated_at": _now()})
+        return {"document_id": document_id, "chunk_count": len(tasks), "tasks": tasks, "status": "pending_review"}
+
+    def vectorize_document(self, document_id: str) -> dict[str, Any]:
+        self._find("knowledge_documents", document_id)
+        self._update("knowledge_documents", document_id, {"vector_status": "ready", "updated_at": _now()})
+        with store._connect() as connection, connection.cursor() as cursor:
+            cursor.execute("UPDATE knowledge_chunks SET vector_status='ready', updated_at=%s WHERE document_id=%s", (_now(), document_id))
+            connection.commit()
+        return self._find("knowledge_documents", document_id)
+
+    def list_chunks(self, document_id: str = "") -> list[dict[str, Any]]:
+        items = self._all("knowledge_chunks", 2000)
+        return [item for item in items if not document_id or item["document_id"] == document_id]
+
+    def add_chunk(self, document_id: str, title: str, content: str, tags: list[str]) -> dict[str, Any]:
+        self._find("knowledge_documents", document_id)
+        now = _now()
+        return self._insert("knowledge_chunks", {"id": uuid.uuid4().hex, "document_id": document_id, "title": title, "content": content, "tags_json": json.dumps(tags, ensure_ascii=False), "status": "draft", "vector_status": "pending", "created_at": now, "updated_at": now})
+
+    def update_chunk(self, chunk_id: str, title: str, content: str, tags: list[str]) -> dict[str, Any]:
+        self._find("knowledge_chunks", chunk_id)
+        return self._update("knowledge_chunks", chunk_id, {"title": title, "content": content, "tags_json": json.dumps(tags, ensure_ascii=False), "vector_status": "pending", "updated_at": _now()})
+
+    def vectorize_chunk(self, chunk_id: str) -> dict[str, Any]:
+        self._find("knowledge_chunks", chunk_id)
+        self._update("knowledge_chunks", chunk_id, {"vector_status": "ready", "updated_at": _now()})
+        return self._find("knowledge_chunks", chunk_id)
 
     def decide_review(self, task_id: str, status: str, reviewer: str, comment: str) -> dict[str, Any]:
         if status not in ("approved", "rejected", "offline"):
@@ -212,6 +366,10 @@ class RuntimeStore:
         correction = self._insert("guide_corrections", {"id": uuid.uuid4().hex, "record_id": record_id, "mode": mode, "guide_note": guide_note, "optimized_answer": optimized_answer, "status": "pending", "created_at": _now()})
         self.create_review("correction", correction["id"], f"导游修正 {record_id}", optimized_answer, "导游端修正", ["导游修正", mode])
         return correction
+
+    def update_correction(self, correction_id: str, guide_note: str, optimized_answer: str, status: str) -> dict[str, Any]:
+        self._find("guide_corrections", correction_id)
+        return self._update("guide_corrections", correction_id, {"guide_note": guide_note, "optimized_answer": optimized_answer, "status": status})
 
     def add_feedback(self, message_id: str, rating: int, content: str) -> dict[str, Any]:
         return self._insert("feedback", {"id": uuid.uuid4().hex, "message_id": message_id, "rating": rating, "content": content, "status": "open", "created_at": _now()})
@@ -268,6 +426,49 @@ class RuntimeStore:
                 "created_at": _now(),
             },
         )
+
+    def add_favorite(self, session_id: str, item_type: str, item_id: str, title: str) -> dict[str, Any]:
+        return self._insert("favorites", {"id": uuid.uuid4().hex, "session_id": session_id, "item_type": item_type, "item_id": item_id, "title": title, "created_at": _now()})
+
+    def list_favorites(self, session_id: str = "") -> list[dict[str, Any]]:
+        return [item for item in self._all("favorites") if not session_id or item["session_id"] == session_id]
+
+    def log_takeover(self, session_id: str, action: str, guide_id: str = "", note: str = "") -> dict[str, Any]:
+        return self._insert("takeover_logs", {"id": uuid.uuid4().hex, "session_id": session_id, "action": action, "guide_id": guide_id, "note": note, "created_at": _now()})
+
+    def guide_profile(self) -> dict[str, Any]:
+        profile = self._find("guide_profiles", "guide")
+        profile["languages"] = json.loads(profile.get("languages_json") or "[]")
+        profile["specialties"] = json.loads(profile.get("specialties_json") or "[]")
+        profile["stats"] = {"takeovers": len(self._all("takeover_logs", 1000)), "corrections": len(self._all("guide_corrections", 1000)), "replies": len([item for item in self._all("messages", 2000) if item["role"] == "guide"])}
+        return profile
+
+    def list_roles(self) -> list[dict[str, Any]]:
+        permissions = self._all("role_permissions", 1000)
+        items = self._all("roles")
+        for item in items:
+            item["permissions"] = [entry["permission_id"] for entry in permissions if entry["role_id"] == item["id"]]
+        return items
+
+    def set_role_permissions(self, role_id: str, permission_ids: list[str]) -> dict[str, Any]:
+        self._find("roles", role_id)
+        allowed = {item["id"] for item in self._all("permissions")}
+        if any(permission_id not in allowed for permission_id in permission_ids):
+            raise ValueError("invalid permission")
+        self._delete_where("role_permissions", "role_id", role_id)
+        for permission_id in sorted(set(permission_ids)):
+            self._insert("role_permissions", {"id": f"{role_id}:{permission_id}", "role_id": role_id, "permission_id": permission_id, "created_at": _now()})
+        return next(item for item in self.list_roles() if item["id"] == role_id)
+
+    def get_settings(self) -> dict[str, Any]:
+        item = self._find("system_settings", "default")
+        return {"values": json.loads(item["values_json"]), "updated_at": item["updated_at"]}
+
+    def update_settings(self, values: dict[str, Any]) -> dict[str, Any]:
+        current = self.get_settings()["values"]
+        current.update(values)
+        self._update("system_settings", "default", {"values_json": json.dumps(current, ensure_ascii=False), "updated_at": _now()})
+        return self.get_settings()
 
 
 runtime = RuntimeStore()

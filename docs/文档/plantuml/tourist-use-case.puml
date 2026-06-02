@@ -1,0 +1,16 @@
+﻿@startuml
+title 游客用例图
+left to right direction
+actor 游客
+rectangle "游客端" {
+  游客 -- (文本提问)
+  游客 -- (语音提问)
+  游客 -- (图片提问)
+  游客 -- (查看多语讲解)
+  游客 -- (获取路线推荐)
+  游客 -- (提交反馈)
+  (语音提问) ..> (文本提问) : include
+  (图片提问) ..> (RAG知识检索) : include
+  (文本提问) ..> (RAG知识检索) : include
+}
+@enduml

@@ -1,0 +1,22 @@
+﻿@startuml
+title 学生选择实训场景顺序图（BCE）
+actor 学生
+boundary "学生端实训界面" as UI <<boundary>>
+control "实训控制器" as TrainCtl <<control>>
+entity "训练场景" as Scene <<entity>>
+entity "训练任务" as Task <<entity>>
+participant "场景筛选工具" as Filter <<utility>>
+
+学生 -> UI : 进入实训界面
+UI -> TrainCtl : listScenes()
+TrainCtl -> Filter : buildSceneFilter(studentId)
+Filter --> TrainCtl : sceneFilter
+TrainCtl -> Scene : queryAvailableScenes(sceneFilter)
+Scene --> TrainCtl : sceneList
+TrainCtl --> UI : showScenes(sceneList)
+学生 -> UI : 选择场景、语言、难度
+UI -> TrainCtl : createTrainingTask(sceneId, language, level)
+TrainCtl -> Task : create(sceneId, studentId, language, level)
+Task --> TrainCtl : taskId
+TrainCtl --> UI : enterTraining(taskId)
+@enduml

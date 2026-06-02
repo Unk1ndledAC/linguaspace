@@ -1,0 +1,29 @@
+﻿@startuml
+title 游客文本提问顺序图（BCE）
+actor 游客
+boundary "游客端问答界面" as UI <<boundary>>
+control "智能导览控制器" as GuideCtl <<control>>
+control "AI编排控制器" as AICtl <<control>>
+entity "会话记录" as Session <<entity>>
+entity "知识片段" as Chunk <<entity>>
+participant "RAG检索器" as RAG <<utility>>
+participant "大语言模型适配器" as LLM <<utility>>
+participant "翻译/术语工具" as Trans <<utility>>
+
+游客 -> UI : 输入文本问题
+UI -> GuideCtl : submitTextQuestion(question, language, spotId)
+GuideCtl -> Session : createOrLoadSession()
+GuideCtl -> AICtl : analyzeIntent(question)
+AICtl -> RAG : search(question, spotId)
+RAG -> Chunk : queryReviewedChunks()
+Chunk --> RAG : reviewedChunks
+RAG --> AICtl : retrievalResult
+AICtl -> LLM : generateAnswer(question, retrievalResult)
+LLM --> AICtl : answerDraft
+AICtl -> Trans : checkTermsAndTranslate(answerDraft, language)
+Trans --> AICtl : finalAnswer
+AICtl -> Session : saveMessage(question, finalAnswer, sources)
+AICtl --> GuideCtl : finalAnswer
+GuideCtl --> UI : displayAnswer(finalAnswer)
+UI --> 游客 : 展示回答
+@enduml

@@ -1,0 +1,20 @@
+﻿@startuml
+title 管理员维护术语表顺序图（BCE）
+actor 管理员
+boundary "管理端术语表界面" as UI <<boundary>>
+control "术语控制器" as TermCtl <<control>>
+entity "术语" as Term <<entity>>
+participant "术语校验工具" as Validator <<utility>>
+
+管理员 -> UI : 查询或新增术语
+UI -> TermCtl : queryTerms(keyword)
+TermCtl -> Term : query(keyword)
+Term --> TermCtl : termList
+TermCtl --> UI : showTerms(termList)
+管理员 -> UI : 填写术语信息
+UI -> TermCtl : saveTerm(termForm)
+TermCtl -> Validator : validateUniqueAndRequired(termForm)
+Validator --> TermCtl : validateResult
+TermCtl -> Term : saveVersion(termForm)
+TermCtl --> UI : saveResult(success)
+@enduml

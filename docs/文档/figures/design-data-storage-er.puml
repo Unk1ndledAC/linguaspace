@@ -1,0 +1,83 @@
+@startuml
+skinparam dpi 160
+skinparam shadowing false
+hide circle
+title 数据存储 ER 设计图
+
+entity "users" as users {
+  * user_id : uuid
+  --
+  username : varchar
+  password_hash : text
+  role : varchar
+  status : varchar
+}
+entity "guide_sessions" as sessions {
+  * session_id : uuid
+  --
+  user_id : uuid
+  spot_id : uuid
+  language : varchar
+  status : varchar
+}
+entity "messages" as messages {
+  * message_id : uuid
+  --
+  session_id : uuid
+  input_type : varchar
+  question : text
+  answer : text
+}
+entity "knowledge_documents" as docs {
+  * document_id : uuid
+  --
+  title : varchar
+  source : varchar
+  version : varchar
+}
+entity "knowledge_chunks" as chunks {
+  * chunk_id : uuid
+  --
+  document_id : uuid
+  content : text
+  review_status : varchar
+}
+entity "training_records" as records {
+  * record_id : uuid
+  --
+  student_id : uuid
+  scene_id : uuid
+  transcript : text
+  score : numeric
+}
+entity "guide_corrections" as corrections {
+  * correction_id : uuid
+  --
+  guide_id : uuid
+  message_id : uuid
+  corrected_content : text
+}
+entity "review_tasks" as reviews {
+  * task_id : uuid
+  --
+  object_type : varchar
+  object_id : uuid
+  review_status : varchar
+}
+entity "model_call_logs" as logs {
+  * log_id : uuid
+  --
+  request_id : varchar
+  message_id : uuid
+  model_name : varchar
+}
+
+users ||--o{ sessions
+sessions ||--o{ messages
+docs ||--o{ chunks
+users ||--o{ records
+users ||--o{ corrections
+messages ||--o{ corrections
+messages ||--o{ logs
+reviews }o--|| users : reviewer
+@enduml

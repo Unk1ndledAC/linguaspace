@@ -1,0 +1,20 @@
+﻿@startuml
+title 导游接管游客对话顺序图（BCE）
+actor 导游
+boundary "导游端会话界面" as GuideUI <<boundary>>
+boundary "游客端会话界面" as TouristUI <<boundary>>
+control "接管控制器" as TakeoverCtl <<control>>
+entity "游客会话" as Session <<entity>>
+entity "接管记录" as Takeover <<entity>>
+participant "通知工具" as Notify <<utility>>
+
+导游 -> GuideUI : 点击接管会话
+GuideUI -> TakeoverCtl : requestTakeover(sessionId, guideId)
+TakeoverCtl -> Session : checkStatus(sessionId)
+Session --> TakeoverCtl : available
+TakeoverCtl -> Session : updateHandler(guideId)
+TakeoverCtl -> Takeover : create(sessionId, guideId)
+TakeoverCtl -> Notify : notifyTourist(sessionId)
+Notify -> TouristUI : 显示人工服务状态
+TakeoverCtl --> GuideUI : takeoverSuccess
+@enduml

@@ -143,6 +143,73 @@ class ScenarioInput(BaseModel):
     reference_answers: list[str] = []
 
 
+class UserUpdateInput(BaseModel):
+    display_name: str
+    role: str
+    language: str = "zh"
+    status: str = "active"
+
+
+class FavoriteInput(BaseModel):
+    session_id: str = ""
+    item_type: str
+    item_id: str
+    title: str
+
+
+class HandoffInput(BaseModel):
+    session_id: str
+    note: str = ""
+
+
+class TouristPreferenceInput(BaseModel):
+    session_id: str
+    language: str = "zh"
+    location: str = ""
+
+
+class CaseInput(BaseModel):
+    case_type: str
+    question: str
+    strategy: str
+    guide_note: str = ""
+
+
+class CorrectionUpdateInput(BaseModel):
+    guide_note: str = ""
+    optimized_answer: str = ""
+    status: str = "pending"
+
+
+class ChunkInput(BaseModel):
+    document_id: str
+    title: str
+    content: str
+    tags: list[str] = []
+
+
+class TermsImportInput(BaseModel):
+    items: list[TermInput]
+
+
+class TermCheckInput(BaseModel):
+    text: str = ""
+
+
+class RoleInput(BaseModel):
+    id: str
+    name: str
+    description: str = ""
+
+
+class RolePermissionsInput(BaseModel):
+    permission_ids: list[str] = []
+
+
+class SettingsInput(BaseModel):
+    values: dict[str, Any]
+
+
 def require_roles(*roles: str):
     def verify(authorization: str | None = Header(default=None)) -> dict[str, Any]:
         if not settings.enforce_auth:
@@ -214,6 +281,62 @@ def _find_reference_answers(scene: str, question: str) -> str:
     return ""
 
 
+def _overview_stats() -> dict[str, Any]:
+    today = datetime.now().date().isoformat()
+    messages = runtime._all("messages", 5000)
+    sessions = runtime._all("guide_sessions", 5000)
+    return {
+        "knowledge_items": len(store.knowledge),
+        "graph_relations": len(store.graph),
+        "routes": len(store.routes),
+        "terms": len(list_terms()),
+        "today_questions": len([item for item in messages if item["role"] == "user" and item["created_at"].startswith(today)]),
+        "today_sessions": len([item for item in sessions if item["created_at"].startswith(today)]),
+        "pending_reviews": len([item for item in runtime._all("review_tasks", 5000) if item["status"] == "pending"]),
+    }
+
+
+def _culture_tips(keyword: str = "") -> list[dict[str, Any]]:
+    terms = ("礼仪", "禁忌", "宗教", "节庆", "安全", "注意", "民族")
+    items = []
+    for item in store.list_knowledge():
+        haystack = f"{item['title']} {item['content']} {' '.join(item['tags'])}"
+        if any(term in haystack for term in terms) and (not keyword or keyword in haystack):
+            items.append({"id": item["id"], "title": item["title"], "summary": item["snippet"], "tags": item["tags"], "source": "knowledge_base"})
+    return items[:12]
+
+
+def _system_metrics() -> dict[str, Any]:
+    model_logs = runtime._all("model_call_logs", 5000)
+    traces = runtime._all("request_traces", 5000)
+    sessions = runtime._all("guide_sessions", 5000)
+    feedback_items = runtime._all("feedback", 5000)
+    capabilities: dict[str, dict[str, int]] = {}
+    for item in model_logs:
+        bucket = capabilities.setdefault(item["capability"], {"calls": 0, "latency_ms": 0, "failed": 0})
+        bucket["calls"] += 1
+        bucket["latency_ms"] += int(item.get("latency_ms") or 0)
+        bucket["failed"] += int(item.get("status") != "success")
+    for bucket in capabilities.values():
+        bucket["avg_latency_ms"] = round(bucket["latency_ms"] / max(bucket["calls"], 1))
+    reliable_count = 0
+    for trace in traces:
+        pipeline = json.loads(trace.get("pipeline_json") or "{}")
+        reliable_count += int(bool(pipeline.get("reliable", pipeline.get("sources", 0))))
+    return {"overview": _overview_stats(), "sessions": len(sessions), "feedback": len(feedback_items), "model_calls": len(model_logs), "request_traces": len(traces), "rag_reliable_rate": round(reliable_count / max(len(traces), 1), 3), "capabilities": capabilities}
+
+
+def _system_alerts() -> list[dict[str, Any]]:
+    items = []
+    for name, component in health()["components"].items():
+        if not component.get("ok"):
+            items.append({"id": f"health:{name}", "level": "warning", "source": name, "title": f"{name} 服务不可用", "detail": component.get("error") or "请检查服务配置"})
+    pending = len([item for item in runtime._all("review_tasks", 5000) if item["status"] == "pending"])
+    if pending:
+        items.append({"id": "reviews:pending", "level": "info", "source": "knowledge", "title": "存在待审核知识任务", "detail": f"当前有 {pending} 条任务等待处理"})
+    return items
+
+
 def _mysql_host_port() -> tuple[str, int]:
     parsed = urlparse(settings.mysql_url)
     host = parsed.hostname or "127.0.0.1"
@@ -221,10 +344,15 @@ def _mysql_host_port() -> tuple[str, int]:
     return host, port
 
 
-def _prompt(question: str, sources: list[dict[str, Any]], graph: list[dict[str, str]], dynamic_hint: bool = False) -> str:
+def _prompt(question: str, sources: list[dict[str, Any]], graph: list[dict[str, str]], dynamic_hint: bool = False, target_language: str = "zh") -> str:
     context = "\n".join(f"- {item['title']}：{item['snippet']}" for item in sources)
     relations = "\n".join(f"- {item['source']} → {item['relation']} → {item['target']}" for item in graph[:12])
     dynamic_note = "动态信息需提醒以现场公告为准。" if dynamic_hint else ""
+    language_note = (
+        "请用自然、简洁、友好的中文回答"
+        if target_language in ("zh", "zh-CN", "中文")
+        else f"请直接使用目标语言 {target_language} 自然、简洁、友好地回答，不要附带中文翻译"
+    )
     return f"""你是语界 LinguaSpace 的云南文旅导览助手。只能基于给定的已审核资料回答，不要编造。
 游客问题：{question}
 知识库资料：
@@ -232,12 +360,14 @@ def _prompt(question: str, sources: list[dict[str, Any]], graph: list[dict[str, 
 文化关系：
 {relations or "无补充关系"}
 {dynamic_note}
-请用自然、简洁、友好的中文回答，并在动态信息处提醒以现场公告为准。"""
+{language_note}，并在动态信息处提醒以现场公告为准。"""
 
 
 def _answer(question: str, session_id: str | None = None, input_type: str = "text", language: str = "zh", location: str | None = None) -> dict[str, Any]:
     if not session_id:
         session_id = runtime.create_session(language, location)["id"]
+    else:
+        runtime.update_session(session_id, {"language": language, **({"location": location} if location is not None else {})})
     question = question.strip()
     runtime.record_message(session_id, "user", input_type, question=question)
     normalized = apply_glossary_to_zh(question, language)
@@ -365,6 +495,26 @@ def user_status(user_id: str, status: str, _: dict = Depends(require_roles("admi
     return runtime._update("users", user_id, {"status": status})
 
 
+@app.put("/api/users/{user_id}")
+def update_user(user_id: str, payload: UserUpdateInput, _: dict = Depends(require_roles("admin"))) -> dict[str, Any]:
+    try:
+        return runtime.update_user(user_id, payload.display_name, payload.role, payload.language, payload.status)
+    except KeyError:
+        raise HTTPException(404, "user not found")
+    except ValueError:
+        raise HTTPException(422, "invalid user values")
+
+
+@app.delete("/api/users/{user_id}")
+def delete_user(user_id: str, _: dict = Depends(require_roles("admin"))) -> dict[str, bool]:
+    try:
+        runtime._find("users", user_id)
+        runtime._delete("users", user_id)
+        return {"ok": True}
+    except KeyError:
+        raise HTTPException(404, "user not found")
+
+
 @app.post("/api/sessions")
 def create_session(payload: SessionInput) -> dict[str, Any]:
     return runtime.create_session(payload.language, payload.location, payload.visitor_name)
@@ -373,6 +523,16 @@ def create_session(payload: SessionInput) -> dict[str, Any]:
 @app.get("/api/sessions")
 def sessions() -> dict[str, Any]:
     return {"items": runtime.list_sessions()}
+
+
+@app.get("/api/sessions/{session_id}")
+def session_detail(session_id: str) -> dict[str, Any]:
+    try:
+        session = runtime.get_session(session_id)
+        session["messages"] = [item for item in runtime._all("messages", 2000) if item["session_id"] == session_id]
+        return session
+    except KeyError:
+        raise HTTPException(404, "session not found")
 
 
 @app.get("/api/sessions/{session_id}/profile")
@@ -398,9 +558,90 @@ def route_content() -> dict[str, Any]:
     return {"routes": store.routes, "filters": store.filters}
 
 
+@app.get("/api/stats/overview")
+def overview_stats() -> dict[str, Any]:
+    return _overview_stats()
+
+
+@app.get("/api/tourist/home")
+def tourist_home(session_id: str = "") -> dict[str, Any]:
+    return {"overview": _overview_stats(), "guide": guide_content(), "routes": store.routes[:4], "favorites": runtime.list_favorites(session_id), "weather": {"status": "provider_not_configured", "note": runtime.get_settings()["values"].get("weather_note", "未配置天气服务提供方")}}
+
+
+@app.get("/api/tourist/culture-tips")
+def tourist_culture_tips(keyword: str = "") -> dict[str, Any]:
+    return {"items": _culture_tips(keyword)}
+
+
+@app.get("/api/tourist/preferences")
+def tourist_preferences(session_id: str) -> dict[str, Any]:
+    try:
+        session = runtime.get_session(session_id)
+        return {"session_id": session_id, "language": session["language"], "location": session["location"]}
+    except KeyError:
+        raise HTTPException(404, "session not found")
+
+
+@app.put("/api/tourist/preferences")
+def update_tourist_preferences(payload: TouristPreferenceInput) -> dict[str, Any]:
+    try:
+        runtime.update_session(payload.session_id, {"language": payload.language, "location": payload.location})
+        return {"session_id": payload.session_id, "language": payload.language, "location": payload.location}
+    except KeyError:
+        raise HTTPException(404, "session not found")
+
+
+@app.get("/api/tourist/favorites")
+def tourist_favorites(session_id: str = "") -> dict[str, Any]:
+    return {"items": runtime.list_favorites(session_id)}
+
+
+@app.post("/api/tourist/favorites")
+def add_tourist_favorite(payload: FavoriteInput) -> dict[str, Any]:
+    return runtime.add_favorite(payload.session_id, payload.item_type, payload.item_id, payload.title)
+
+
+@app.delete("/api/tourist/favorites/{favorite_id}")
+def delete_tourist_favorite(favorite_id: str) -> dict[str, bool]:
+    runtime._delete("favorites", favorite_id)
+    return {"ok": True}
+
+
+@app.post("/api/tourist/handoff")
+def tourist_handoff(payload: HandoffInput) -> dict[str, Any]:
+    try:
+        runtime.update_session(payload.session_id, {"status": "handoff_requested"})
+        runtime.log_takeover(payload.session_id, "requested", note=payload.note)
+        return {"session_id": payload.session_id, "status": "handoff_requested"}
+    except KeyError:
+        raise HTTPException(404, "session not found")
+
+
 @app.get("/api/collaboration/cases")
 def collaboration_cases() -> dict[str, Any]:
     return {"items": store.cases}
+
+
+@app.post("/api/collaboration/cases")
+def add_collaboration_case(payload: CaseInput, _: dict = Depends(require_roles("guide", "admin"))) -> dict[str, Any]:
+    return store.add_case(payload.model_dump())
+
+
+@app.put("/api/collaboration/cases/{case_id}")
+def update_collaboration_case(case_id: str, payload: CaseInput, _: dict = Depends(require_roles("guide", "admin"))) -> dict[str, Any]:
+    try:
+        return store.update_case(case_id, payload.model_dump())
+    except KeyError:
+        raise HTTPException(404, "case not found")
+
+
+@app.delete("/api/collaboration/cases/{case_id}")
+def delete_collaboration_case(case_id: str, _: dict = Depends(require_roles("guide", "admin"))) -> dict[str, bool]:
+    try:
+        store.delete_case(case_id)
+        return {"ok": True}
+    except KeyError:
+        raise HTTPException(404, "case not found")
 
 
 @app.post("/api/chat")
@@ -412,6 +653,8 @@ def chat(payload: ChatRequest) -> dict[str, Any]:
 def chat_stream(payload: ChatRequest) -> StreamingResponse:
     question = payload.question.strip()
     session_id = payload.session_id or runtime.create_session(payload.language, payload.location)["id"]
+    if payload.session_id:
+        runtime.update_session(session_id, {"language": payload.language, **({"location": payload.location} if payload.location is not None else {})})
     runtime.record_message(session_id, "user", "text", question=question)
     normalized = apply_glossary_to_zh(question, payload.language)
     search_question = normalized["text"]
@@ -431,7 +674,7 @@ def chat_stream(payload: ChatRequest) -> StreamingResponse:
         )
         return StreamingResponse(iter([answer]), media_type="text/plain; charset=utf-8", headers={"X-LinguaSpace-Session": session_id})
     graph = store.graph_query(search_question)
-    prompt = _prompt(search_question, sources, graph, _dynamic_hint(question))
+    prompt = _prompt(search_question, sources, graph, _dynamic_hint(question), payload.language)
 
     def generate():
         chunks: list[str] = []
@@ -626,7 +869,75 @@ def terms() -> dict[str, Any]:
 
 @app.get("/api/knowledge/documents")
 def documents() -> dict[str, Any]:
-    return {"items": [item for item in runtime._all("review_tasks") if item["object_type"] == "document"]}
+    return {"items": runtime.list_documents()}
+
+
+@app.get("/api/knowledge/documents/{document_id}")
+def document_detail(document_id: str) -> dict[str, Any]:
+    try:
+        return {"document": runtime._find("knowledge_documents", document_id), "chunks": runtime.list_chunks(document_id)}
+    except KeyError:
+        raise HTTPException(404, "document not found")
+
+
+@app.delete("/api/knowledge/documents/{document_id}")
+def delete_document(document_id: str, _: dict = Depends(require_roles("admin"))) -> dict[str, bool]:
+    try:
+        runtime.delete_document(document_id)
+        return {"ok": True}
+    except KeyError:
+        raise HTTPException(404, "document not found")
+
+
+@app.post("/api/knowledge/documents/{document_id}/split")
+def split_document(document_id: str, _: dict = Depends(require_roles("admin"))) -> dict[str, Any]:
+    try:
+        return runtime.split_document(document_id)
+    except KeyError:
+        raise HTTPException(404, "document not found")
+
+
+@app.post("/api/knowledge/documents/{document_id}/vectorize")
+def vectorize_document(document_id: str, _: dict = Depends(require_roles("admin"))) -> dict[str, Any]:
+    try:
+        return runtime.vectorize_document(document_id)
+    except KeyError:
+        raise HTTPException(404, "document not found")
+
+
+@app.get("/api/knowledge/chunks")
+def chunks(document_id: str = "") -> dict[str, Any]:
+    return {"items": runtime.list_chunks(document_id)}
+
+
+@app.post("/api/knowledge/chunks")
+def add_chunk(payload: ChunkInput, _: dict = Depends(require_roles("admin"))) -> dict[str, Any]:
+    try:
+        return runtime.add_chunk(payload.document_id, payload.title, payload.content, payload.tags)
+    except KeyError:
+        raise HTTPException(404, "document not found")
+
+
+@app.put("/api/knowledge/chunks/{chunk_id}")
+def update_chunk(chunk_id: str, payload: ChunkInput, _: dict = Depends(require_roles("admin"))) -> dict[str, Any]:
+    try:
+        return runtime.update_chunk(chunk_id, payload.title, payload.content, payload.tags)
+    except KeyError:
+        raise HTTPException(404, "chunk not found")
+
+
+@app.delete("/api/knowledge/chunks/{chunk_id}")
+def delete_chunk(chunk_id: str, _: dict = Depends(require_roles("admin"))) -> dict[str, bool]:
+    runtime._delete("knowledge_chunks", chunk_id)
+    return {"ok": True}
+
+
+@app.post("/api/knowledge/chunks/{chunk_id}/vectorize")
+def vectorize_chunk(chunk_id: str, _: dict = Depends(require_roles("admin"))) -> dict[str, Any]:
+    try:
+        return runtime.vectorize_chunk(chunk_id)
+    except KeyError:
+        raise HTTPException(404, "chunk not found")
 
 
 @app.get("/api/knowledge/stats")
@@ -634,9 +945,30 @@ def knowledge_stats() -> dict[str, Any]:
     return {"knowledge_items": len(store.knowledge), "graph_relations": len(store.graph), "places": len(store.places), "routes": len(store.routes), "training_scenarios": len(store.scenarios), "terms": len(list_terms()), "pending_reviews": len([item for item in runtime._all("review_tasks") if item["status"] == "pending"])}
 
 
+@app.get("/api/knowledge/statistics")
+def knowledge_statistics() -> dict[str, Any]:
+    documents_count = len(runtime.list_documents())
+    chunks_count = len(runtime.list_chunks())
+    ready_chunks = len([item for item in runtime.list_chunks() if item["vector_status"] == "ready"])
+    return {**knowledge_stats(), "documents": documents_count, "chunks": chunks_count, "vectorized_chunks": ready_chunks, "vector_coverage": round(ready_chunks / max(chunks_count, 1), 3), "rag": _system_metrics()["rag_reliable_rate"]}
+
+
 @app.post("/api/terms")
 def add_term(payload: TermInput, _: dict = Depends(require_roles("admin"))) -> dict[str, Any]:
     return runtime.add_term(payload.zh_name, payload.language, payload.translation, payload.scene)
+
+
+@app.post("/api/terms/import")
+def import_terms(payload: TermsImportInput, _: dict = Depends(require_roles("admin"))) -> dict[str, Any]:
+    created = [runtime.add_term(item.zh_name, item.language, item.translation, item.scene) for item in payload.items]
+    return {"items": created, "created": len(created)}
+
+
+@app.post("/api/terms/check")
+def check_terms(payload: TermCheckInput) -> dict[str, Any]:
+    items = list_terms()
+    missing = [item for item in items if item["zh_name"] and item["zh_name"] in payload.text and item["translation"] not in payload.text]
+    return {"matched": len(missing), "items": missing}
 
 
 @app.put("/api/terms/{term_id}")
@@ -673,6 +1005,24 @@ def corrections() -> dict[str, Any]:
     return {"items": runtime._all("guide_corrections")}
 
 
+@app.put("/api/collaboration/corrections/{correction_id}")
+def update_correction(correction_id: str, payload: CorrectionUpdateInput, _: dict = Depends(require_roles("guide", "admin"))) -> dict[str, Any]:
+    try:
+        return runtime.update_correction(correction_id, payload.guide_note, payload.optimized_answer, payload.status)
+    except KeyError:
+        raise HTTPException(404, "correction not found")
+
+
+@app.get("/api/guide/profile")
+def guide_profile() -> dict[str, Any]:
+    return runtime.guide_profile()
+
+
+@app.get("/api/guide/takeover-logs")
+def guide_takeover_logs() -> dict[str, Any]:
+    return {"items": runtime._all("takeover_logs")}
+
+
 @app.post("/api/route/recommend")
 def route_recommend(payload: RouteInput) -> dict[str, Any]:
     terms = f"{payload.visitor_type}{payload.interest}"
@@ -682,7 +1032,13 @@ def route_recommend(payload: RouteInput) -> dict[str, Any]:
 
 
 @app.post("/api/image/ask")
-async def image_ask(file: UploadFile = File(...), question: str = Form("请介绍图片中的云南文旅内容")) -> dict[str, Any]:
+async def image_ask(
+    file: UploadFile = File(...),
+    question: str = Form("请介绍图片中的云南文旅内容"),
+    session_id: str = Form(""),
+    language: str = Form("zh"),
+    location: str = Form(""),
+) -> dict[str, Any]:
     image = await file.read()
     if len(image) > 8 * 1024 * 1024:
         raise HTTPException(413, "image too large")
@@ -695,13 +1051,19 @@ async def image_ask(file: UploadFile = File(...), question: str = Form("请介�
     except Exception as exc:
         runtime.log_model("vision", "ollama", settings.ollama_vision_model, vision_prompt, 0, "failed", str(exc))
         raise HTTPException(503, f"vision model unavailable: {exc}")
-    answer = _answer(f"{summary} {question}", language="zh")
+    answer = _answer(f"{summary} {question}", session_id or None, input_type="image", language=language, location=location or None)
     return {"upload": upload, "vision_summary": summary, **answer}
 
 
 @app.post("/api/image/ask/stream")
-async def image_ask_stream(file: UploadFile = File(...), question: str = Form("请介绍图片中的云南文旅内容")) -> StreamingResponse:
-    result = await image_ask(file, question)
+async def image_ask_stream(
+    file: UploadFile = File(...),
+    question: str = Form("请介绍图片中的云南文旅内容"),
+    session_id: str = Form(""),
+    language: str = Form("zh"),
+    location: str = Form(""),
+) -> StreamingResponse:
+    result = await image_ask(file, question, session_id, language, location)
     return StreamingResponse(iter([result["answer"]]), media_type="text/plain; charset=utf-8")
 
 
@@ -711,20 +1073,27 @@ async def audio_transcribe(file: UploadFile = File(...)) -> dict[str, Any]:
     upload = objects.save("audio", file.filename or "upload.wav", content)
     path = Path(upload["local_path"])
     started = time.perf_counter()
-    result = transcribe(path)
+    try:
+        result = transcribe(path)
+    except RuntimeError as exc:
+        raise HTTPException(500, str(exc)) from exc
     runtime.log_model("asr", result["engine"], "small", file.filename or "", round((time.perf_counter() - started) * 1000), "success" if result.get("available") else "failed", result.get("message", ""))
     return {"audio_url": upload["url"], "storage": upload["backend"], **result}
 
 
 @app.post("/api/audio/ask")
-async def audio_ask(file: UploadFile = File(...)) -> dict[str, Any]:
+async def audio_ask(file: UploadFile = File(...), session_id: str = Form(""), language: str = Form(""), location: str = Form("")) -> dict[str, Any]:
     content = await file.read()
     upload = objects.save("audio", file.filename or "upload.wav", content)
     path = Path(upload["local_path"])
-    transcript = transcribe(path)
+    try:
+        transcript = transcribe(path)
+    except RuntimeError as exc:
+        raise HTTPException(503, str(exc)) from exc
     if not transcript.get("text"):
         raise HTTPException(503, "server ASR unavailable or failed to transcribe audio")
-    return {"audio_url": upload["url"], "transcript": transcript, **_answer(str(transcript["text"]), input_type="audio", language=transcript.get("language", "zh"))}
+    answer_language = language or transcript.get("language", "zh")
+    return {"audio_url": upload["url"], "transcript": transcript, **_answer(str(transcript["text"]), session_id or None, input_type="audio", language=answer_language, location=location or None)}
 
 
 @app.post("/api/collaboration/summary")
@@ -744,6 +1113,7 @@ def takeover(session_id: str, _: dict = Depends(require_roles("guide", "admin"))
     try:
         runtime.get_session(session_id)
         runtime._update("guide_sessions", session_id, {"status": "taken_over", "updated_at": datetime.now().isoformat(timespec="seconds")})
+        runtime.log_takeover(session_id, "taken_over", guide_id="guide")
         return {"session_id": session_id, "status": "taken_over"}
     except KeyError:
         raise HTTPException(404, "session not found")
@@ -754,6 +1124,16 @@ def guide_reply(session_id: str, payload: GuideReplyInput, _: dict = Depends(req
     try:
         runtime.get_session(session_id)
         return runtime.record_message(session_id, "guide", "text", answer=payload.answer, reliable=True, provider="human-guide")
+    except KeyError:
+        raise HTTPException(404, "session not found")
+
+
+@app.post("/api/sessions/{session_id}/release")
+def release_takeover(session_id: str, _: dict = Depends(require_roles("guide", "admin"))) -> dict[str, Any]:
+    try:
+        runtime.update_session(session_id, {"status": "active"})
+        runtime.log_takeover(session_id, "released", guide_id="guide")
+        return {"session_id": session_id, "status": "active"}
     except KeyError:
         raise HTTPException(404, "session not found")
 
@@ -782,6 +1162,77 @@ def tts(payload: TTSInput) -> dict[str, Any]:
     subprocess.run(["powershell", "-NoProfile", "-Command", command], check=True, capture_output=True)
     runtime.log_model("tts", "windows-sapi", "system-voice", payload.text, round((time.perf_counter() - started) * 1000))
     return {"url": f"/media/{filename}", "engine": "Windows SAPI"}
+
+
+@app.get("/api/system/dashboard")
+def system_dashboard(_: dict = Depends(require_roles("admin"))) -> dict[str, Any]:
+    return {"metrics": _system_metrics(), "alerts": _system_alerts()}
+
+
+@app.get("/api/system/alerts")
+def system_alerts(_: dict = Depends(require_roles("admin"))) -> dict[str, Any]:
+    return {"items": _system_alerts()}
+
+
+@app.get("/api/system/metrics")
+def system_metrics(_: dict = Depends(require_roles("admin"))) -> dict[str, Any]:
+    return _system_metrics()
+
+
+@app.get("/api/system/settings")
+def system_settings(_: dict = Depends(require_roles("admin"))) -> dict[str, Any]:
+    return runtime.get_settings()
+
+
+@app.put("/api/system/settings")
+def update_system_settings(payload: SettingsInput, _: dict = Depends(require_roles("admin"))) -> dict[str, Any]:
+    return runtime.update_settings(payload.values)
+
+
+@app.get("/api/permissions")
+def permissions(_: dict = Depends(require_roles("admin"))) -> dict[str, Any]:
+    return {"items": runtime._all("permissions")}
+
+
+@app.get("/api/roles")
+def roles(_: dict = Depends(require_roles("admin"))) -> dict[str, Any]:
+    return {"items": runtime.list_roles()}
+
+
+@app.post("/api/roles")
+def add_role(payload: RoleInput, _: dict = Depends(require_roles("admin"))) -> dict[str, Any]:
+    now = datetime.now().isoformat(timespec="seconds")
+    return runtime._insert("roles", {"id": payload.id, "name": payload.name, "description": payload.description, "created_at": now, "updated_at": now})
+
+
+@app.put("/api/roles/{role_id}")
+def update_role(role_id: str, payload: RoleInput, _: dict = Depends(require_roles("admin"))) -> dict[str, Any]:
+    try:
+        runtime._find("roles", role_id)
+        return runtime._update("roles", role_id, {"name": payload.name, "description": payload.description, "updated_at": datetime.now().isoformat(timespec="seconds")})
+    except KeyError:
+        raise HTTPException(404, "role not found")
+
+
+@app.delete("/api/roles/{role_id}")
+def delete_role(role_id: str, _: dict = Depends(require_roles("admin"))) -> dict[str, bool]:
+    try:
+        runtime._find("roles", role_id)
+        runtime._delete_where("role_permissions", "role_id", role_id)
+        runtime._delete("roles", role_id)
+        return {"ok": True}
+    except KeyError:
+        raise HTTPException(404, "role not found")
+
+
+@app.put("/api/roles/{role_id}/permissions")
+def update_role_permissions(role_id: str, payload: RolePermissionsInput, _: dict = Depends(require_roles("admin"))) -> dict[str, Any]:
+    try:
+        return runtime.set_role_permissions(role_id, payload.permission_ids)
+    except KeyError:
+        raise HTTPException(404, "role not found")
+    except ValueError:
+        raise HTTPException(422, "invalid permission")
 
 
 @app.get("/media/{filename}")

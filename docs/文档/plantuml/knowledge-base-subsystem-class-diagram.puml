@@ -1,0 +1,77 @@
+﻿@startuml
+title 知识库管理子系统类图
+skinparam classAttributeIconSize 0
+
+class "知识文档 KnowledgeDocument" as Doc {
+  - documentId: String
+  - title: String
+  - source: String
+  - version: String
+  - uploadTime: DateTime
+  + upload(): void
+  + updateVersion(): void
+}
+
+class "知识切片 KnowledgeChunk" as Chunk {
+  - chunkId: String
+  - documentId: String
+  - content: String
+  - reviewStatus: ReviewStatus
+  - sensitiveLevel: Integer
+  + vectorize(): void
+  + markReviewed(status: ReviewStatus): void
+}
+
+class "术语 Term" as Term {
+  - termId: String
+  - chineseName: String
+  - targetLanguage: String
+  - translation: String
+  - scene: String
+  + updateTranslation(value: String): void
+  + validateUsage(text: String): Boolean
+}
+
+class "文化实体 CulturalEntity" as Entity {
+  - entityId: String
+  - name: String
+  - entityType: String
+  - description: String
+  + updateDescription(text: String): void
+}
+
+class "文化关系 CulturalRelation" as Relation {
+  - relationId: String
+  - sourceEntityId: String
+  - targetEntityId: String
+  - relationType: String
+  + createRelation(): void
+  + removeRelation(): void
+}
+
+class "审核任务 ReviewTask" as ReviewTask {
+  - taskId: String
+  - objectType: String
+  - objectId: String
+  - status: ReviewStatus
+  - comment: String
+  + approve(): void
+  + reject(reason: String): void
+}
+
+class "知识库服务 KnowledgeService" as KnowledgeService {
+  + splitDocument(document: KnowledgeDocument): List<KnowledgeChunk>
+  + search(query: String): RetrievalResult
+  + publishChunk(chunkId: String): void
+}
+
+Doc "1" *-- "*" Chunk : 切分为
+Entity "1" o-- "*" Relation : 源实体
+Entity "1" o-- "*" Relation : 目标实体
+ReviewTask "*" --> "1" Chunk : 审核
+ReviewTask "*" --> "0..1" Term : 审核
+KnowledgeService ..> Doc : 管理文档
+KnowledgeService ..> Chunk : 检索切片
+KnowledgeService ..> Term : 术语控制
+KnowledgeService ..> Entity : 图谱补充
+@enduml

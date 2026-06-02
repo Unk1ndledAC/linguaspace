@@ -1,0 +1,20 @@
+﻿@startuml
+title 学生提交语音讲解顺序图（BCE）
+actor 学生
+boundary "学生端语音提交界面" as UI <<boundary>>
+control "讲解提交控制器" as SubmitCtl <<control>>
+entity "训练记录" as Record <<entity>>
+entity "音频文件" as Audio <<entity>>
+participant "语音识别工具" as ASR <<utility>>
+participant "评分工具" as Scorer <<utility>>
+
+学生 -> UI : 录制语音讲解
+UI -> SubmitCtl : uploadExplanationAudio(taskId, audio)
+SubmitCtl -> Audio : save(audio)
+SubmitCtl -> ASR : transcribe(audio)
+ASR --> SubmitCtl : transcript
+SubmitCtl -> Scorer : score(transcript, taskId)
+Scorer --> SubmitCtl : scoreDraft
+SubmitCtl -> Record : saveTranscriptAndScore(transcript, scoreDraft)
+SubmitCtl --> UI : submitResult(success)
+@enduml

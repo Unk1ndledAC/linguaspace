@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi.testclient import TestClient
 
 from app.auth import verify_token
@@ -79,3 +81,31 @@ def test_admin_crud_extensions():
 def test_collaboration_risk_detection():
     payload = client.post("/api/collaboration/summary", json={"question": "游客高反了怎么办"}).json()
     assert payload["risk_level"] == "high"
+
+
+def test_tourist_handoff_preferences_and_favorites():
+    session = client.post("/api/sessions", json={"visitor_name": "api-tourist"}).json()
+    preferences = client.put("/api/tourist/preferences", json={"session_id": session["id"], "language": "en", "location": "Dali"}).json()
+    assert preferences["language"] == "en"
+    favorite = client.post("/api/tourist/favorites", json={"session_id": session["id"], "item_type": "route", "item_id": "route-test", "title": "Dali route"}).json()
+    assert any(item["id"] == favorite["id"] for item in client.get("/api/tourist/favorites", params={"session_id": session["id"]}).json()["items"])
+    assert client.post("/api/tourist/handoff", json={"session_id": session["id"], "note": "help"}).json()["status"] == "handoff_requested"
+    assert client.post(f"/api/sessions/{session['id']}/takeover").json()["status"] == "taken_over"
+    assert client.post(f"/api/sessions/{session['id']}/release").json()["status"] == "active"
+    assert client.delete(f"/api/tourist/favorites/{favorite['id']}").json()["ok"]
+
+
+def test_document_chunks_roles_metrics_and_settings():
+    uploaded = client.post("/api/knowledge/documents", files={"file": ("extended.md", b"extended knowledge", "text/markdown")}, data={"source": "pytest"}).json()
+    document_id = uploaded["document_id"]
+    assert client.post(f"/api/knowledge/documents/{document_id}/vectorize").json()["vector_status"] == "ready"
+    chunks = client.get("/api/knowledge/chunks", params={"document_id": document_id}).json()["items"]
+    assert chunks and chunks[0]["vector_status"] == "ready"
+    role_id = f"pytest-{uuid.uuid4().hex[:8]}"
+    assert client.post("/api/roles", json={"id": role_id, "name": "Pytest role"}).json()["id"] == role_id
+    updated = client.put(f"/api/roles/{role_id}/permissions", json={"permission_ids": ["tourist.read"]}).json()
+    assert updated["permissions"] == ["tourist.read"]
+    assert "overview" in client.get("/api/system/metrics").json()
+    assert "values" in client.put("/api/system/settings", json={"values": {"default_language": "zh"}}).json()
+    assert client.delete(f"/api/roles/{role_id}").json()["ok"]
+    assert client.delete(f"/api/knowledge/documents/{document_id}").json()["ok"]

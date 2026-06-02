@@ -1,0 +1,96 @@
+@startuml
+skinparam dpi 160
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+title 系统核心领域类图
+
+class User {
+  +userId: UUID
+  +username: String
+  +role: UserRole
+  +status: AccountStatus
+  +createdAt: DateTime
+  +isActive(): Boolean
+  +changeRole(role: UserRole): void
+  +disable(reason: String): void
+}
+class GuideSession {
+  +sessionId: UUID
+  +userId: UUID
+  +language: String
+  +status: SessionStatus
+  +riskLevel: Integer
+  +startedAt: DateTime
+  +appendMessage(message: Message): void
+  +markRisk(level: Integer): void
+  +close(): void
+}
+class Message {
+  +messageId: UUID
+  +sessionId: UUID
+  +inputType: InputType
+  +question: Text
+  +answer: Text
+  +reliable: Boolean
+  +createdAt: DateTime
+  +attachSources(chunks: List<KnowledgeChunk>): void
+  +markUnreliable(reason: String): void
+}
+class KnowledgeDocument {
+  +documentId: UUID
+  +title: String
+  +source: String
+  +version: String
+  +reviewStatus: ReviewStatus
+  +splitToChunks(): List<KnowledgeChunk>
+  +submitReview(): void
+}
+class KnowledgeChunk {
+  +chunkId: UUID
+  +documentId: UUID
+  +content: Text
+  +embeddingId: String
+  +reviewStatus: ReviewStatus
+  +sensitiveLevel: Integer
+  +canRetrieve(): Boolean
+  +updateEmbedding(embeddingId: String): void
+}
+class TrainingRecord {
+  +recordId: UUID
+  +studentId: UUID
+  +taskId: UUID
+  +transcript: Text
+  +score: Decimal
+  +createdAt: DateTime
+  +calculateTotalScore(): Decimal
+  +generateReport(): TrainingReport
+}
+class GuideCorrection {
+  +correctionId: UUID
+  +messageId: UUID
+  +guideId: UUID
+  +correctedContent: Text
+  +reviewStatus: ReviewStatus
+  +submitReview(): void
+  +approve(): void
+  +reject(reason: String): void
+}
+class ModelCallLog {
+  +logId: UUID
+  +requestId: String
+  +modelName: String
+  +provider: String
+  +latencyMs: Integer
+  +status: String
+  +recordSuccess(latencyMs: Integer): void
+  +recordFailure(error: String): void
+}
+
+User "1" --> "0..*" GuideSession
+GuideSession "1" --> "1..*" Message
+KnowledgeDocument "1" --> "1..*" KnowledgeChunk
+Message "1" --> "0..*" ModelCallLog
+Message "1" --> "0..*" GuideCorrection
+User "1" --> "0..*" TrainingRecord
+KnowledgeChunk "0..*" --> "0..*" Message : source_refs
+@enduml

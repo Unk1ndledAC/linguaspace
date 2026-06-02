@@ -1,0 +1,20 @@
+﻿@startuml
+title 学生查看训练报告顺序图（BCE）
+actor 学生
+boundary "学生端报告界面" as UI <<boundary>>
+control "训练报告控制器" as ReportCtl <<control>>
+entity "训练记录" as Record <<entity>>
+entity "训练报告" as Report <<entity>>
+participant "报告格式化工具" as Formatter <<utility>>
+
+学生 -> UI : 打开训练报告
+UI -> ReportCtl : getReport(recordId)
+ReportCtl -> Record : loadRecord(recordId)
+Record --> ReportCtl : trainingData
+ReportCtl -> Report : loadOrGenerate(trainingData)
+Report --> ReportCtl : reportData
+ReportCtl -> Formatter : format(reportData)
+Formatter --> ReportCtl : formattedReport
+ReportCtl --> UI : showReport(formattedReport)
+UI --> 学生 : 展示评分和建议
+@enduml

@@ -1,0 +1,22 @@
+﻿@startuml
+title 导游查看接管记录顺序图（BCE）
+actor 导游
+boundary "导游端接管记录界面" as UI <<boundary>>
+control "接管记录控制器" as RecordCtl <<control>>
+entity "接管记录" as Takeover <<entity>>
+entity "游客会话" as Session <<entity>>
+participant "记录筛选工具" as Filter <<utility>>
+
+导游 -> UI : 进入接管记录页面
+UI -> RecordCtl : queryTakeoverRecords(guideId, filters)
+RecordCtl -> Filter : normalize(filters)
+Filter --> RecordCtl : normalizedFilters
+RecordCtl -> Takeover : queryByGuide(guideId, normalizedFilters)
+Takeover --> RecordCtl : recordList
+RecordCtl --> UI : showRecords(recordList)
+导游 -> UI : 打开记录详情
+UI -> RecordCtl : getRecordDetail(recordId)
+RecordCtl -> Session : loadSession(recordId)
+Session --> RecordCtl : sessionDetail
+RecordCtl --> UI : showDetail(sessionDetail)
+@enduml

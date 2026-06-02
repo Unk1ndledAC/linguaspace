@@ -1,0 +1,76 @@
+@startuml
+skinparam dpi 160
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+title 真人导游协同服务类图
+
+class CollaborationController {
+  -collaborationService: CollaborationService
+  -correctionService: CorrectionService
+  +listSessions(status: String): List<GuideAssistSessionDTO>
+  +takeover(sessionId: UUID, guideId: UUID): TakeoverRecordDTO
+  +submitCorrection(request: CorrectionDTO): GuideCorrectionDTO
+}
+class CollaborationService {
+  -sessionRepository: SessionRepository
+  +riskThreshold: Integer
+  +buildSessionSummary(sessionId: UUID): SessionSummaryDTO
+  +detectRisk(session: GuideSession): RiskResult
+  +assignGuide(sessionId: UUID): GuideAssistSession
+  +archiveTakeover(takeoverId: UUID): void
+}
+class GuideAssistSession {
+  +assistId: UUID
+  +sessionId: UUID
+  +guideId: UUID
+  +status: String
+  +createdAt: DateTime
+  +startAssist(guideId: UUID): void
+  +finishAssist(): void
+  +isActive(): Boolean
+}
+class TakeoverRecord {
+  +takeoverId: UUID
+  +assistId: UUID
+  +startTime: DateTime
+  +endTime: DateTime
+  +reason: String
+  +close(endTime: DateTime): void
+  +durationMinutes(): Integer
+}
+class CorrectionService {
+  -correctionRepository: CorrectionRepository
+  -reviewTaskRepository: ReviewTaskRepository
+  +submitCorrection(request: CorrectionDTO): GuideCorrection
+  +createReviewTask(correctionId: UUID): ReviewTask
+  +syncApprovedCorrection(correctionId: UUID): void
+}
+class SessionRepository {
+  -dataSource: PostgreSQL
+  -tableName: String
+  +findActiveSessions(): List<GuideSession>
+  +findById(sessionId: UUID): GuideSession
+  +saveAssistSession(session: GuideAssistSession): void
+}
+class CorrectionRepository {
+  -dataSource: PostgreSQL
+  -tableName: String
+  +save(correction: GuideCorrection): GuideCorrection
+  +findByMessageId(messageId: UUID): List<GuideCorrection>
+  +updateReviewStatus(correctionId: UUID, status: ReviewStatus): void
+}
+class ReviewTaskRepository {
+  -dataSource: PostgreSQL
+  -tableName: String
+  +save(task: ReviewTask): ReviewTask
+  +findByObjectId(objectId: UUID): ReviewTask
+}
+
+CollaborationController --> CollaborationService
+CollaborationController --> CorrectionService
+CollaborationService --> GuideAssistSession
+CollaborationService --> TakeoverRecord
+CollaborationService --> SessionRepository
+CorrectionService --> CorrectionRepository
+CorrectionService --> ReviewTaskRepository
+@enduml

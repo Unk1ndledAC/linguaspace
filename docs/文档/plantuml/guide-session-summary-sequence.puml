@@ -1,0 +1,22 @@
+﻿@startuml
+title 导游查看游客会话摘要顺序图（BCE）
+actor 导游
+boundary "导游端会话界面" as UI <<boundary>>
+control "导游协同控制器" as GuideCtl <<control>>
+entity "导游账号" as Guide <<entity>>
+entity "游客会话" as Session <<entity>>
+entity "消息记录" as Message <<entity>>
+participant "会话摘要生成器" as SummaryTool <<utility>>
+
+导游 -> UI : 进入会话列表
+UI -> GuideCtl : listSessions(guideId)
+GuideCtl -> Guide : checkPermission(guideId)
+Guide --> GuideCtl : permissionResult
+GuideCtl -> Session : queryAvailableSessions()
+Session --> GuideCtl : sessions
+GuideCtl -> Message : queryMessages(sessionId)
+Message --> GuideCtl : messageList
+GuideCtl -> SummaryTool : buildSummary(messageList)
+SummaryTool --> GuideCtl : summary
+GuideCtl --> UI : showSummary(summary)
+@enduml

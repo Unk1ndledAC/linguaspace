@@ -1,0 +1,25 @@
+﻿@startuml
+title 游客语音提问顺序图（BCE）
+actor 游客
+boundary "游客端语音界面" as UI <<boundary>>
+control "语音问答控制器" as VoiceCtl <<control>>
+control "智能导览控制器" as GuideCtl <<control>>
+entity "音频文件" as Audio <<entity>>
+entity "会话记录" as Session <<entity>>
+participant "语音识别工具" as ASR <<utility>>
+participant "语音合成工具" as TTS <<utility>>
+
+游客 -> UI : 录制语音问题
+UI -> VoiceCtl : uploadAudio(audio)
+VoiceCtl -> Audio : save(audio)
+VoiceCtl -> ASR : transcribe(audio)
+ASR --> VoiceCtl : transcript, language
+VoiceCtl -> GuideCtl : submitTextQuestion(transcript, language)
+GuideCtl -> Session : saveQuestion(transcript)
+GuideCtl --> VoiceCtl : answerText
+VoiceCtl -> TTS : synthesize(answerText, language)
+TTS --> VoiceCtl : answerAudio
+VoiceCtl -> Session : saveAnswer(answerText, answerAudio)
+VoiceCtl --> UI : returnAnswer(answerText, answerAudio)
+UI --> 游客 : 播放/展示回答
+@enduml

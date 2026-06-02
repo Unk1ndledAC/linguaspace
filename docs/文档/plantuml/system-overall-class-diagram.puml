@@ -1,0 +1,63 @@
+﻿@startuml
+title UML 类图
+class User {
+  userId
+  name
+  role
+  languagePreference
+  status
+}
+class Session {
+  sessionId
+  userId
+  scene
+  language
+  createdAt
+}
+class Message {
+  messageId
+  sessionId
+  inputType
+  content
+  answer
+}
+class KnowledgeDocument {
+  documentId
+  title
+  source
+  version
+}
+class KnowledgeChunk {
+  chunkId
+  documentId
+  content
+  reviewStatus
+}
+class TrainingRecord {
+  recordId
+  studentId
+  sceneId
+  transcript
+  score
+}
+class GuideCorrection {
+  correctionId
+  guideId
+  messageId
+  correctedContent
+  reviewStatus
+}
+class ModelCallLog {
+  logId
+  requestId
+  modelName
+  status
+}
+User "1" -- "*" Session
+Session "1" -- "*" Message
+KnowledgeDocument "1" -- "*" KnowledgeChunk
+User "1" -- "*" TrainingRecord
+User "1" -- "*" GuideCorrection
+Message "1" -- "*" ModelCallLog
+Message "1" -- "*" GuideCorrection
+@enduml

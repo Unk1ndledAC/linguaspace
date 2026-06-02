@@ -34,7 +34,7 @@ Default local Ollama:
 
 ```text
 LLM_PROVIDER=ollama
-OLLAMA_MODEL=qwen3.5:0.8b
+OLLAMA_MODEL=qwen3.5:9b
 OLLAMA_VISION_MODEL=qwen3-vl:4b
 ```
 

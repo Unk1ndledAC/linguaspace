@@ -1,0 +1,821 @@
+﻿\chapter{系统设计文档}
+
+\providecommand{\diagramimage}[3][0.95\textwidth]{
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=#1,keepaspectratio]{figures/#2}
+  \caption{#3}
+\end{figure}
+}
+\providecommand{\flowdiagramimage}[3][0.62\textwidth]{
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=#1,keepaspectratio]{figures/#2}
+  \caption{#3}
+\end{figure}
+}
+\providecommand{\screenshotplaceholder}[4][0.88\textwidth]{
+\begin{figure}[H]
+  \centering
+  \fbox{\begin{minipage}[c][#2][c]{#1}
+    \centering
+    \textbf{#3}\\[0.8em]
+    \small #4
+  \end{minipage}}
+  \caption{#3界面截图占位}
+\end{figure}
+}
+
+\section{引言}
+
+\subsection{设计目标}
+
+本文档在需求分析基础上，对语界 LinguaSpace 多语文旅智能导览与人才培养系统进行系统设计说明。文档分为概要设计和详细设计两个部分：概要设计说明系统总体架构、模块划分、部署结构和关键设计原则；详细设计进一步说明各子系统类结构、接口设计、数据设计、状态流转、异常处理和运维设计。
+
+系统设计的核心目标是将游客多语导览、拍照识别、AI 导游实训、真人导游协同、知识库管理和内容审核统一组织为可维护的软件系统。系统不允许大语言模型直接自由生成文化事实，而是通过 RAG 文旅知识库、文化知识图谱、术语表、审核机制和日志链路保证回答可追踪、可审核、可迭代。
+
+\subsection{设计依据}
+
+设计依据来自系统已确定的功能边界、非功能约束、用例模型、数据模型、类模型和业务流程。技术选型围绕多语文旅导览、可信知识检索、AI 实训评分、真人导游协同和管理端审核展开，后端采用 FastAPI，前端采用 Vue 3/H5 与小程序适配，数据层采用 PostgreSQL、Milvus、Neo4j、Redis 和 MinIO，AI 能力层接入 Qwen、Whisper、NLLB-200、BGE-M3、Qwen-VL、Piper/MeloTTS 等模型，并通过 Docker Compose 与 Kubernetes 支撑完整部署和弹性运维。
+
+\subsection{设计原则}
+
+\begin{enumerate}
+  \item 高内聚低耦合：游客导览、学生实训、导游协同、知识管理、审核和日志模块职责明确，模块之间通过接口协作。
+  \item 知识优先：历史文化、民族习俗、宗教礼仪、景区政策、开放时间和票价等内容必须优先检索审核通过的知识库。
+  \item 模型可替换：语音识别、翻译、视觉识别、大语言模型、向量化和语音合成均通过适配器封装，避免业务代码绑定具体模型。
+  \item 全链路可观测：每次 AI 调用记录请求编号、输入类型、检索来源、模型版本、生成结果、耗时和异常信息。
+  \item 可部署可运维：系统采用容器化部署、服务分层、统一配置和监控告警机制，保证上线运行、扩容迁移和故障排查具备明确支撑。
+\end{enumerate}
+
+\subsection{系统运行能力}
+
+系统运行能力覆盖前端交互、后端接口、模型编排、知识检索、数据持久化和运维监控。后端使用 FastAPI 暴露 REST API，前端通过环境变量配置 API 地址，模型通过统一 Provider 接入，数据库侧使用 PostgreSQL 与向量检索组件保存业务数据和知识切片，RAG 链路返回可追踪来源列表。系统以完整业务闭环为目标，支持景区导览、学生实训、导游协同、知识审核和日志追踪的连续运行。
+
+\begin{longtable}{p{3.5cm}p{4.5cm}p{5.1cm}}
+\toprule
+运行能力 & 接口/模块 & 设计约束 \\
+\midrule
+健康检查 & \code{GET /api/health} & 检查 API、PostgreSQL/pgvector、Redis、MinIO、Neo4j、LLM、Vision、TTS 和 ASR 状态。 \\
+架构审计 & \code{GET /api/architecture/audit} & 对照五层架构返回达成状态，可作为管理端系统状态页面的数据来源。 \\
+RAG 问答 & \code{POST /api/chat} & 先检索知识库，命中为空时返回“暂无可靠资料”，响应包含 sources、provider、model、reliable。 \\
+知识库管理 & \code{GET/POST /api/knowledge}、\code{POST /api/knowledge/search} & 支持管理端查看、添加和检索已审核知识。 \\
+图片问答 & \code{POST /api/image/ask} & 使用视觉模型提取图片摘要，再进入 RAG 问答链路。 \\
+语音与 TTS & \code{POST /api/audio/*}、\code{POST /api/tts/synthesize} & ASR 由 Whisper 类语音识别服务完成，TTS 由 Piper/MeloTTS 生成可播放语音文件。 \\
+图谱与路线 & \code{GET /api/graph}、\code{POST /api/graph/query}、\code{POST /api/route/recommend} & 支持文化关系展示、实体关系查询和路线推荐。 \\
+实训与协同 & \code{POST /api/training/score}、\code{POST /api/collaboration/*} & 支持学生讲解评分、协同摘要和导游修正内容提交。 \\
+\bottomrule
+\end{longtable}
+
+\section{概要设计}
+
+\subsection{系统总体架构}
+
+系统采用五层架构：客户端层、业务服务层、AI 能力层、知识增强层、数据与运维层。客户端只负责交互和展示，不直接访问模型和数据库；业务服务层负责权限、流程、状态和接口编排；AI 能力层提供模型适配；知识增强层提供可信事实依据；数据与运维层负责持久化、缓存、文件和监控。
+
+\diagramimage[1\textwidth]{design-layer-architecture-image2.png}{系统设计五层架构图}
+\newpage
+\begin{longtable}{p{2.7cm}p{4.1cm}p{6.2cm}}
+\toprule
+架构层 & 组成 & 设计说明 \\
+\midrule
+客户端层 & 游客端、学生端、导游端、管理端 & 负责多模态输入采集、业务页面展示、结果反馈和用户操作提交。游客端优先适配移动场景，管理端和学生端优先适配 PC Web。 \\
+业务服务层 & 导览、实训、协同、审核、日志、用户权限 & 负责业务规则、流程编排、权限校验、状态流转和统一 API 输出，是系统核心控制层。 \\
+AI 能力层 & ASR、翻译、视觉、LLM、向量化、TTS & 通过 AI 编排服务统一调用模型能力，模型以适配器形式接入，保证业务服务不依赖具体模型实现。 \\
+知识增强层 & RAG 知识库、术语表、文化知识图谱 & 为大模型生成提供受控上下文，保证文旅事实、术语翻译和文化关系可追踪。 \\
+数据与运维层 & PostgreSQL、Milvus、Neo4j、Redis、MinIO、日志监控 & 保存结构化数据、向量索引、图谱关系、缓存、文件对象、审计日志和监控指标。 \\
+\bottomrule
+\end{longtable}
+
+\subsection{总体技术选型}
+
+\begin{longtable}{p{2.6cm}p{3.8cm}p{6.6cm}}
+\toprule
+类别 & 技术选型 & 设计理由 \\
+\midrule
+后端框架 & FastAPI & 支持异步接口、自动生成 OpenAPI 文档，适合快速构建 AI 编排和业务服务接口。 \\
+前端框架 & Vue 3、H5、小程序 & 管理端和学生端可采用 Vue 3，游客端优先使用 H5 或小程序以适配景区移动使用场景。 \\
+业务数据库 & PostgreSQL & 保存用户、会话、消息、审核、训练、反馈和日志索引等结构化业务数据。 \\
+向量数据库 & Milvus & 保存 BGE-M3 等模型生成的多语向量，用于 RAG 文旅知识检索。 \\
+图数据库 & Neo4j & 保存景点、城市、民族、节庆、非遗、饮食、建筑和禁忌等文化实体关系。 \\
+缓存 & Redis & 缓存会话上下文、热点问答、临时任务状态、短期检索结果和访问令牌。 \\
+文件存储 & MinIO & 保存游客图片、语音文件、学生训练录音、知识文档原文和 TTS 音频。 \\
+模型推理 & vLLM、Transformers & 部署 Qwen、Qwen-VL、BGE-M3、NLLB-200 等模型能力。 \\
+部署方式 & Docker Compose、Kubernetes & 使用容器化方式部署前端、后端、模型、数据和监控组件，并支持 Kubernetes 弹性伸缩。 \\
+监控日志 & Prometheus、Grafana、Loki & 监控服务状态、请求耗时、模型调用耗时、异常日志和资源占用。 \\
+\bottomrule
+\end{longtable}
+
+\subsection{子系统划分}
+
+\begin{longtable}{p{2.6cm}p{4.2cm}p{6.2cm}}
+\toprule
+子系统 & 核心模块 & 主要职责 \\
+\midrule
+用户与权限子系统 & 用户账号、角色权限、登录日志、鉴权中间件 & 管理游客、学生、导游和管理员身份，控制不同角色可访问的页面、接口和数据范围。 \\
+智能导览子系统 & 导览会话、消息记录、导览服务、路线方案、反馈 & 处理文本、语音、图片和位置输入，生成可信多语回答、路线建议和文化提示。 \\
+知识库管理子系统 & 文档、切片、术语、图谱、审核任务 & 完成文旅资料上传、清洗、切分、审核、向量化、术语维护和文化关系维护。 \\
+AI 导游实训子系统 & 训练场景、虚拟游客、训练记录、语音提交、训练报告 & 支持学生模拟带团训练、语音讲解提交、多维评分和报告生成。 \\
+真人导游协同子系统 & 会话摘要、接管记录、导游修正、优质案例 & 支持真人导游查看游客上下文、人工接管、修正 AI 回答和沉淀案例。 \\
+日志与反馈子系统 & 模型调用日志、检索日志、用户反馈、异常日志 & 支撑问题追踪、内容修订、模型效果分析和运维排障。 \\
+\bottomrule
+\end{longtable}
+
+\subsection{系统软件结构设计}
+
+系统软件结构按客户端、接口、业务服务、AI 适配、数据访问和基础设施进行分包。客户端包只保存界面、状态管理和 API 调用逻辑；接口包负责请求鉴权、参数校验和路由分发；业务服务包承载导览、实训、协同、审核和日志等核心流程；AI 包通过适配器屏蔽不同模型实现差异；仓储包统一封装数据库、向量库、图数据库、缓存和对象存储访问。
+
+\diagramimage[0.92\textwidth]{design-package-structure-network.png}{系统软件包结构图}
+
+\begin{longtable}{p{3.2cm}p{4.1cm}p{5.6cm}}
+\toprule
+软件包 & 主要组成 & 设计说明 \\
+\midrule
+\code{client} & 游客端、学生端、导游端、管理端 & 负责页面展示、表单校验、多模态输入采集和接口调用，不直接访问数据库和模型服务。 \\
+\code{api} & 鉴权中间件、参数校验器、路由控制器 & 负责接收 HTTP 请求，统一处理身份校验、错误响应、限流和接口路由。 \\
+\code{services} & 导览、实训、知识、协同、审核、日志服务 & 系统核心业务逻辑所在层，负责流程编排、状态转换和跨模块协作。 \\
+\code{ai} & ASR、翻译、视觉、向量化、LLM、TTS 适配器 & 将模型调用封装为稳定接口，便于替换本地模型或云端模型。 \\
+\code{repositories} & 用户、会话、知识、训练、审核仓储 & 封装数据读写细节，避免业务服务直接拼接 SQL 或依赖具体存储组件。 \\
+\code{infrastructure} & PostgreSQL、Milvus、Neo4j、Redis、MinIO、监控 & 提供持久化、缓存、文件、日志和指标采集能力。 \\
+\bottomrule
+\end{longtable}
+
+\subsection{部署概要设计}
+
+系统采用容器化部署方式。前端、后端 API、模型推理服务、PostgreSQL、Milvus、Neo4j、Redis、MinIO 和监控组件以容器方式运行。导览服务、AI 编排服务、知识库服务、实训服务和日志服务按照服务边界独立部署，并通过 Kubernetes 进行弹性伸缩、滚动发布和故障恢复。
+
+\begin{longtable}{p{3cm}p{4cm}p{6cm}}
+\toprule
+节点/容器 & 部署内容 & 说明 \\
+\midrule
+Web 容器 & Vue 3 管理端、学生端、导游端页面 & 提供静态资源和前端路由，可由 Nginx 托管。 \\
+API 容器 & FastAPI 应用、鉴权中间件、业务服务 & 对客户端提供 HTTP API，对内部服务提供模块接口。 \\
+模型容器 & Qwen、Qwen-VL、Whisper、NLLB、BGE、TTS & 由 AI 编排服务调用，可独立扩容或替换。 \\
+数据容器 & PostgreSQL、Milvus、Neo4j、Redis、MinIO & 分别保存业务、向量、图谱、缓存和文件数据。 \\
+监控容器 & Prometheus、Grafana、Loki & 采集服务指标、调用耗时、错误日志和资源状态。 \\
+\bottomrule
+\end{longtable}
+
+\diagramimage[0.7\textwidth]{design-deployment-topology-image2.png}{部署拓扑设计图}
+
+\subsection{关键业务流程概要}
+
+\subsubsection{智能导览流程}
+
+智能导览流程统一处理文本、语音和图片输入。语音先经过 ASR 转写，图片先经过视觉模型和 OCR 识别，随后进入标准文本问题处理流程。系统将问题翻译或标准化为统一语言，检索审核通过的知识切片，补充图谱关系，再由大语言模型基于受控上下文生成回答。
+
+\flowdiagramimage[0.5\textwidth]{design-guide-orchestration-activity.png}{智能导览编排活动图}
+\newpage
+\subsubsection{知识库管理流程}
+
+知识库管理流程从资料上传开始，经过格式解析、文本清洗、知识切片、元数据标注和人工审核。审核通过的切片才会向量化写入 Milvus 并进入正式知识库；退回或下线内容不能进入游客端回答。
+
+\flowdiagramimage[0.62\textwidth]{design-knowledge-review-activity.png}{知识入库审核活动图}
+\newpage
+\subsubsection{AI 导游实训流程}
+
+实训流程以训练场景为入口，系统生成虚拟游客问题，学生提交语音讲解后由 ASR 转写，并结合知识库标准内容和评分规则生成报告。评分结果作为教学辅助，不替代教师最终评价。
+
+\flowdiagramimage[0.35\textwidth]{design-training-evaluation-activity.png}{AI 导游实训评分活动图}
+\newpage
+\subsubsection{真人导游协同流程}
+
+导游协同流程连接 AI 服务和人工服务。系统在游客会话中持续记录问题、语言、地点、兴趣主题和 AI 回答摘要，导游可查看摘要并接管复杂会话。导游修正和优质案例进入审核流程，通过后回流知识库或案例库。
+
+\flowdiagramimage[0.7\textwidth]{design-human-guide-collaboration-activity.png}{真人导游协同活动图}
+\newpage
+\section{详细设计}
+
+\subsection{总体类结构设计}
+
+系统总体类结构由用户、会话、消息、知识文档、知识切片、训练记录、导游修正和模型调用日志等核心实体组成。用户与导览会话、训练记录、导游修正存在一对多关系；会话包含多条消息；知识文档切分为多个知识切片；消息产生模型调用日志和导游修正记录。
+
+\diagramimage[0.84\textwidth]{design-core-domain-class.png}{系统核心领域类图}
+
+\subsection{用户与权限子系统详细设计}
+
+\subsubsection{类图}
+
+\diagramimage[0.82\textwidth]{design-user-auth-class.png}{用户与权限设计类图}
+
+\subsubsection{类职责}
+
+\begin{longtable}{p{3cm}p{4.2cm}p{6cm}}
+\toprule
+类名 & 主要属性/方法 & 设计说明 \\
+\midrule
+User & userId、username、roleId、status、login()、disable() & 保存账号信息和账号状态，是权限判断的主体对象。 \\
+Role & roleId、roleName、addPermission()、removePermission() & 描述游客、学生、导游、管理员等角色，并维护角色权限集合。 \\
+Permission & permissionCode、resource、action、match() & 描述可访问资源和操作动作，用于接口级和页面级权限控制。 \\
+LoginLog & loginTime、ipAddress、result、recordLogin() & 记录登录行为，支持安全审计和异常访问追踪。 \\
+AuthService & authenticate()、checkPermission()、assignRole() & 完成认证、授权、角色分配和权限校验。 \\
+\bottomrule
+\end{longtable}
+
+\subsubsection{权限矩阵}
+
+\begin{longtable}{p{2.5cm}p{2.4cm}p{2.4cm}p{2.4cm}p{2.4cm}}
+\toprule
+功能资源 & 游客 & 学生 & 导游 & 管理员 \\
+\midrule
+智能导览问答 & 可用 & 可用 & 可查看 & 可查看日志 \\
+图片/语音问答 & 可用 & 可用 & 可查看摘要 & 可查看日志 \\
+AI 实训 & 不可用 & 可用 & 可查看案例 & 可配置场景 \\
+会话接管 & 不可用 & 不可用 & 可用 & 可查看记录 \\
+知识文档上传 & 不可用 & 不可用 & 可提交案例 & 可用 \\
+内容审核 & 不可用 & 不可用 & 不可用 & 可用 \\
+模型调用日志 & 不可用 & 不可用 & 仅关联会话 & 可用 \\
+\bottomrule
+\end{longtable}
+
+\subsection{智能导览子系统详细设计}
+
+\subsubsection{类图}
+
+\diagramimage[1\textwidth]{design-guide-service-class.png}{智能导览服务类图}
+\newpage
+\subsubsection{模块职责}
+
+\begin{longtable}{p{3.2cm}p{4.2cm}p{5.8cm}}
+\toprule
+模块 & 输入/输出 & 设计说明 \\
+\midrule
+导览会话管理 & 输入用户、景区、语种；输出 sessionId & 保存连续对话上下文，支持游客和导游围绕同一会话协作。 \\
+多模态输入处理 & 输入文本、音频、图片、位置；输出标准 query & 将语音和图片转换为可检索文本，统一进入 RAG 问答流程。 \\
+RAG 检索调用 & 输入 query、spotId、language；输出知识片段列表 & 仅召回审核通过、适用景区和语言范围匹配的知识切片。 \\
+回答生成 & 输入 query、知识片段、图谱关系；输出回答文本 & 调用 LLM 生成导览回答，必须约束模型只基于上下文回答事实。 \\
+结果输出 & 输入回答、来源、目标语言；输出前端响应 & 进行术语校验、翻译和可选 TTS 合成，并保存消息记录。 \\
+\bottomrule
+\end{longtable}
+
+\subsubsection{核心处理规则}
+
+\begin{enumerate}
+  \item 文本问题直接进入语种识别和意图识别流程。
+  \item 语音问题先保存原始音频，再调用 ASR 转写，并将转写文本送入文本问答流程。
+  \item 图片问题先调用视觉模型识别对象、OCR 文本和地点线索，再生成检索关键词。
+  \item 涉及文化事实的问题必须检索知识库；缺少可信知识时返回“暂无可靠资料”。
+  \item 所有回答必须保存 question、answer、sourceChunks、modelVersion、latency 和 status。
+\end{enumerate}
+\newpage
+\subsection{知识库管理子系统详细设计}
+
+\subsubsection{类图}
+
+\diagramimage[1\textwidth]{design-knowledge-service-class.png}{知识库管理服务类图}
+
+\subsubsection{知识入库状态机}
+
+\begin{longtable}{p{2.8cm}p{4cm}p{6.4cm}}
+\toprule
+状态 & 触发动作 & 说明 \\
+\midrule
+\code{UPLOADED} & 管理员上传文档 & 原始文件保存到 MinIO，元数据写入 PostgreSQL。 \\
+\code{PARSED} & 文档解析完成 & 文档完成格式解析、文本抽取和基础清洗。 \\
+\code{CHUNKED} & 知识切片完成 & 文本按主题、段落、问答对或景区维度切分。 \\
+\code{PENDING_REVIEW} & 创建审核任务 & 切片等待管理员审核，暂不可进入游客端回答。 \\
+\code{APPROVED} & 审核通过 & 切片可向量化并发布到正式知识库。 \\
+\code{REJECTED} & 审核退回 & 内容需修改或补充来源，不进入检索。 \\
+\code{PUBLISHED} & 向量化入库完成 & PostgreSQL 保存正文，Milvus 保存向量，正式可检索。 \\
+\code{OFFLINE} & 管理员下线 & 内容失效或存在风险，检索时必须过滤。 \\
+\bottomrule
+\end{longtable}
+\newpage
+\subsubsection{知识切片元数据}
+
+\begin{longtable}{p{3cm}p{3.4cm}p{6.6cm}}
+\toprule
+字段 & 类型 & 说明 \\
+\midrule
+chunkId & String & 知识切片唯一编号。 \\
+documentId & String & 来源文档编号。 \\
+spotId & String & 适用景区或地点编号。 \\
+language & String & 原文语种。 \\
+topicTags & String/List & 景点、民族、节庆、非遗、饮食、路线等主题标签。 \\
+content & Text & 切片正文。 \\
+sourceName & String & 来源名称，如文旅局资料、景区资料、课程资料等。 \\
+reviewStatus & Enum & 审核状态，正式检索只允许 APPROVED/PUBLISHED。 \\
+sensitiveLevel & Integer & 敏感级别，用于民族、宗教、政策等内容过滤。 \\
+updatedAt & DateTime & 内容更新时间，用于动态信息时效判断。 \\
+\bottomrule
+\end{longtable}
+
+\subsection{AI 导游实训子系统详细设计}
+
+\subsubsection{类图}
+
+\diagramimage[1\textwidth]{design-training-service-class.png}{AI 导游实训服务类图}
+\newpage
+\subsubsection{训练场景设计}
+
+\begin{longtable}{p{2.8cm}p{4cm}p{6.3cm}}
+\toprule
+场景类型 & 示例任务 & 评分重点 \\
+\midrule
+景点讲解 & 介绍大理古城、丽江古城、石林等景点 & 内容准确性、结构完整度、讲解逻辑。 \\
+民族文化讲解 & 解释白族、傣族、纳西族、彝族文化 & 文化准确性、礼仪敏感性、术语统一。 \\
+接团服务 & 到达集合、行程说明、注意事项提醒 & 服务礼仪、表达清晰度、流程完整度。 \\
+投诉处理 & 路线变更、等待时间、服务争议处理 & 应变能力、情绪安抚、解决方案合理性。 \\
+跨文化交流 & 面向不同国家游客解释文化差异 & 多语表达、跨文化敏感性、禁忌规避。 \\
+应急处理 & 迷路、天气变化、游客身体不适 & 风险识别、响应及时性、安全提示。 \\
+\bottomrule
+\end{longtable}
+
+\subsubsection{评分维度}
+
+\begin{longtable}{p{2.8cm}p{2cm}p{7.8cm}}
+\toprule
+维度 & 建议权重 & 评价说明 \\
+\midrule
+内容准确性 & 30\% & 讲解内容是否符合审核通过的知识库材料，是否存在事实错误。 \\
+讲解完整度 & 20\% & 是否覆盖景点背景、文化关系、注意事项和游客可能关心的问题。 \\
+表达清晰度 & 15\% & 语言是否流畅，逻辑是否清楚，是否有明显停顿或歧义。 \\
+服务礼仪 & 10\% & 是否符合导游服务规范，是否包含必要提醒。 \\
+应变能力 & 10\% & 面对追问、投诉和突发情况时是否给出合理处理。 \\
+跨文化敏感性 & 10\% & 是否避免民族、宗教、礼仪禁忌方面的不当表达。 \\
+多语能力 & 5\% & 外语或多语表达是否准确、自然，术语是否一致。 \\
+\bottomrule
+\end{longtable}
+\newpage
+\subsubsection{实训评分增强设计}
+
+现有项目中的 Topo-SCTB-Net 可作为 AI 导游实训评分模块的增强方案。该模块面向中文导游实训评价，输入学生讲解文本、题目、场景、游客背景、SNEU 场景化规范证据单元、知识库、服务规范和评分 rubric，输出事实/关系状态、规范状态、受众适配状态、证据 span、风险 span、知识分、表达分、服务分和最终分。
+
+\begin{longtable}{p{3.2cm}p{4.2cm}p{5.8cm}}
+\toprule
+组件 & 输入/输出 & 设计说明 \\
+\midrule
+SNEU 证据单元 & 输入场景规范、知识来源、评分规则；输出结构化证据单元 & 将导游讲解需要满足的事实、关系、礼仪和受众条件结构化。 \\
+Soft Evidence-State Graph & 输入候选 span、SNEU slot、游客条件；输出软边图 & 表达学生回答、知识证据和状态判断之间的关系。 \\
+Topology-guided CTB Loss & 输入反事实干预和状态变化；输出训练约束 & 约束目标状态翻转，同时保持非目标状态稳定，提高评分鲁棒性。 \\
+Monotonic Scorer & 输入 fact、relation、norm、audience 状态；输出分项和总分 & 保证状态效用单调，使 supported 优于 partial，violated 低于 risky。 \\
+Evidence-grounded Feedback & 输入证据 span 和风险 span；输出反馈建议 & 给出基于证据的模板化反馈，减少纯 LLM 评价的不稳定性。 \\
+\bottomrule
+\end{longtable}
+
+实训评分由 \code{TrainingEvaluator} 服务统一完成。该服务综合知识库召回、事实覆盖度、礼仪关键词、讲解结构、多语表达质量和 Topo-SCTB-Net 证据评分结果，通过异步任务或模型服务接口接入训练报告生成流程。
+\newpage
+\subsection{真人导游协同子系统详细设计}
+
+\subsubsection{类图}
+
+\diagramimage[0.82\textwidth]{design-human-guide-service-class.png}{真人导游协同服务类图}
+
+\subsubsection{协同规则}
+
+\begin{enumerate}
+  \item 默认情况下游客与 AI 导览系统交互，系统持续生成会话摘要。
+  \item 当问题涉及投诉、复杂历史文化、宗教民族敏感内容或 AI 多次无法回答时，可提示导游接管。
+  \item 导游接管后，游客端应显示人工服务状态，避免游客误以为仍由 AI 自动回答。
+  \item 导游修正内容、优质讲解案例和人工补充资料必须进入审核流程。
+  \item 审核通过后内容才能进入知识库、案例库或实训训练材料。
+\end{enumerate}
+
+\subsection{接口详细设计}
+
+\subsubsection{客户端 API 接口}
+
+\begin{longtable}{p{5.0cm}p{1.35cm}p{3.15cm}p{3.0cm}}
+\toprule
+接口路径 & 方法 & 请求参数 & 响应内容 \\
+\midrule
+\code{/api/auth/login} & POST & username、password、roleType & token、userInfo、permissions \\
+\code{/api/guide/text} & POST & question、language、spotId、sessionId & answer、sources、messageId、traceId \\
+\code{/api/guide/voice} & POST & audioFile、language、spotId、sessionId & transcript、answer、audioUrl、sources \\
+\code{/api/guide/image} & POST & imageFile、question、language、spotId & recognition、answer、sources、messageId \\
+\code{/api/guide/route} & POST & location、timeBudget、interests、language & routePlan、tips、relatedSpots \\
+\code{/api/training/tasks} & POST & sceneId、language、difficulty & taskId、virtualVisitor、firstQuestion \\
+\code{/api/training/submissions} & POST & taskId、audioFile 或 textAnswer & transcript、scoreDraft、recordId \\
+\code{/api/training/reports/{id}} & GET & recordId & totalScore、detailScores、suggestions \\
+\code{/api/guide-assist/sessions} & GET & guideId、filters & sessionList、summary、riskTags \\
+\code{/api/guide-assist/takeover} & POST & sessionId、guideId & takeoverId、status \\
+\code{/api/guide-assist/corrections} & POST & messageId、correctedContent & correctionId、reviewTaskId \\
+\code{/api/admin/knowledge/upload} & POST & file、source、spotId、language、tags & documentId、parseStatus \\
+\code{/api/admin/review/tasks} & GET & status、objectType、page & taskList、total \\
+\code{/api/admin/review/decision} & POST & taskId、decision、comment & reviewStatus、publishedId \\
+\code{/api/admin/logs/model-calls} & GET & requestId、modelName、status、timeRange & logList、traceDetail \\
+\bottomrule
+\end{longtable}
+\newpage
+\subsubsection{系统接口映射}
+
+系统对外接口按照业务资源和权限边界设计，同时保留统一入口与细分业务接口之间的映射关系，便于前端调用、接口治理和日志追踪。
+
+\begin{longtable}{p{5.4cm}p{3.8cm}p{3.8cm}}
+\toprule
+统一入口 & 业务接口方向 & 说明 \\
+\midrule
+\code{GET /api/health} & 运维健康检查接口 & 返回 API、数据库、缓存、对象存储、图数据库、模型和 TTS/ASR 状态。 \\
+\code{GET /api/architecture/audit} & 管理端架构状态接口 & 返回五层架构达成度、证据和缺口。 \\
+\code{POST /api/chat} & \code{POST /api/guide/text} & 文本 RAG 问答，响应包含 answer、sources、model、provider、reliable。 \\
+\code{POST /api/image/ask} & \code{POST /api/guide/image} & 图片识别摘要先进入知识检索，再生成回答。 \\
+\code{POST /api/tts/synthesize} & \code{POST /api/audio/tts} & 生成语音播报文件并通过 \code{/media} 路径返回。 \\
+\code{POST /api/graph/query} & \code{POST /api/knowledge/graph/query} & 查询文化实体关系。 \\
+\code{POST /api/route/recommend} & \code{POST /api/guide/route} & 基于游客类型和兴趣生成路线推荐。 \\
+\code{POST /api/training/score} & \code{POST /api/training/submissions} & 对学生讲解进行评分并返回分项指标。 \\
+\code{POST /api/collaboration/summary} & \code{POST /api/guide-assist/summary} & 判断是否建议真人导游介入并生成摘要。 \\
+\code{POST /api/collaboration/correction} & \code{POST /api/guide-assist/corrections} & 导游修正内容提交审核入库。 \\
+\bottomrule
+\end{longtable}
+
+\subsubsection{界面设计}
+
+系统界面按角色划分为游客导览端、学生实训端、导游协同端、管理端和日志监控端。界面设计遵循“角色入口清晰、主任务优先、结果可追溯、异常可解释”的原则：移动端优先突出快速提问、语音输入、图片识别和路线推荐；学生端突出训练任务、讲解提交和评分反馈；导游端突出待接管会话、风险摘要和修正提交；管理端突出知识入库、审核发布、术语维护、图谱维护和日志追踪。
+
+\begin{longtable}{p{2.4cm}p{3.1cm}p{3.6cm}p{3.9cm}}
+\toprule
+角色端 & 界面名称 & 核心区域 & 设计说明 \\
+\midrule
+游客端 & 导览首页 & 语言选择、文本提问、语音按钮、拍照入口、路线推荐入口 & 面向景区移动场景，优先突出快速提问、多语回答和来源提示。 \\
+游客端 & 多语问答结果页 & 回答卡片、来源列表、可靠性提示、语音播报、继续追问 & 展示答案生成依据，避免无来源文化事实直接呈现。 \\
+游客端 & 图片识别问答页 & 图片预览、识别摘要、补充问题、知识检索来源、回答结果 & 图片信息只作为输入线索，最终回答仍需进入知识检索链路。 \\
+游客端 & 路线推荐页 & 当前位置、兴趣标签、游览时长、路线节点、注意事项 & 支持按时间、兴趣、语言和人群类型生成路线。 \\
+学生端 & 实训场景页 & 场景列表、难度标签、虚拟游客设定、任务目标 & 使学生在提交前明确讲解对象、语言要求和评分重点。 \\
+学生端 & 讲解提交页 & 题目内容、录音控件、文本稿、提交按钮、重录入口 & 支持语音和文本两类提交方式，便于不同训练环境使用。 \\
+学生端 & 评分报告页 & 总分、分项得分、事实覆盖、语言表达、改进建议 & 将评分结果拆解到可训练的能力维度。 \\
+学生端 & 训练历史页 & 历史记录、场景筛选、得分趋势、报告入口 & 支持学生回看进步趋势和薄弱维度。 \\
+导游端 & 协同会话列表页 & 风险等级、游客语言、最新问题、等待时长、接管入口 & 帮助真人导游优先处理高风险或高等待时长会话。 \\
+导游端 & 会话接管页 & 会话摘要、原始问答、建议回复、人工输入、发送按钮 & 接管后保留 AI 上下文，减少导游重复询问成本。 \\
+导游端 & 修正提交页 & 原回答、修正内容、依据说明、关联景点、提交审核 & 将人工修正转为可审核知识资产。 \\
+管理端 & 知识文档管理页 & 上传区域、文档列表、版本号、来源、状态筛选 & 支撑知识入库、版本追踪和来源管理。 \\
+管理端 & 知识审核页 & 切片详情、相似内容、敏感等级、审核意见、通过/退回/下线 & 保证正式检索只使用审核通过内容。 \\
+管理端 & 术语维护页 & 术语列表、语种字段、标准译名、适用范围、冲突提示 & 统一重点文旅名词、多语译名和敏感表达。 \\
+管理端 & 文化图谱维护页 & 实体列表、关系编辑、图谱预览、影响范围 & 维护景点、民族、节庆、饮食、禁忌等文化关系。 \\
+管理端 & 用户权限页 & 用户列表、角色分配、权限矩阵、登录日志 & 支持按游客、学生、导游、管理员进行权限隔离。 \\
+监控端 & 模型调用日志页 & 请求编号、模型名称、耗时、输入摘要、错误信息 & 用于排查模型异常、响应超时和质量问题。 \\
+监控端 & 运行状态页 & 服务健康、数据库状态、队列长度、告警列表 & 展示系统运行状态和架构审计结果。 \\
+\bottomrule
+\end{longtable}
+
+\paragraph{游客端界面截图预留}
+
+\screenshotplaceholder[0.86\textwidth]{6.2cm}{游客导览首页}{预留 H5 或小程序首页截图位置：语言切换、输入框、语音按钮、拍照按钮、路线推荐入口、回答卡片入口。}
+
+\screenshotplaceholder[0.86\textwidth]{6.2cm}{游客多语问答结果页}{预留游客提问结果截图位置：问题内容、回答文本、来源列表、可靠性提示、语音播报按钮、继续追问入口。}
+
+\screenshotplaceholder[0.86\textwidth]{6.2cm}{游客图片识别问答页}{预留图片问答截图位置：图片预览、识别摘要、补充问题输入、RAG 来源、最终回答。}
+
+\screenshotplaceholder[0.86\textwidth]{6.2cm}{游客路线推荐页}{预留路线推荐截图位置：兴趣标签、游览时长、路线节点、地图区域、注意事项。}
+
+\paragraph{学生端界面截图预留}
+
+\screenshotplaceholder[0.86\textwidth]{6.2cm}{学生实训场景页}{预留实训场景截图位置：场景卡片、难度标签、虚拟游客设定、任务目标、开始训练按钮。}
+
+\screenshotplaceholder[0.86\textwidth]{6.2cm}{学生讲解提交页}{预留讲解提交截图位置：题目内容、录音控件、文本稿输入、重录、提交评分按钮。}
+
+\screenshotplaceholder[0.86\textwidth]{6.2cm}{学生评分报告页}{预留评分报告截图位置：总分、分项评分、事实覆盖度、语言表达、礼仪规范、改进建议。}
+
+\screenshotplaceholder[0.86\textwidth]{6.2cm}{学生训练历史页}{预留训练历史截图位置：训练记录列表、场景筛选、得分趋势、报告查看入口。}
+
+\paragraph{导游端界面截图预留}
+
+\screenshotplaceholder[0.86\textwidth]{6.2cm}{导游协同会话列表页}{预留会话列表截图位置：风险等级、游客语言、最新问题、等待时长、接管按钮。}
+
+\screenshotplaceholder[0.86\textwidth]{6.2cm}{导游会话接管页}{预留接管详情截图位置：会话摘要、历史问答、建议回复、人工输入框、发送按钮。}
+
+\screenshotplaceholder[0.86\textwidth]{6.2cm}{导游修正提交页}{预留修正提交截图位置：原回答、修正内容、依据说明、关联景点、提交审核按钮。}
+
+\paragraph{管理端界面截图预留}
+
+\screenshotplaceholder[0.9\textwidth]{6.4cm}{管理端知识文档管理页}{预留知识文档管理截图位置：上传区域、文档列表、版本号、来源、审核状态筛选。}
+
+\screenshotplaceholder[0.9\textwidth]{6.4cm}{管理端知识审核页}{预留知识审核截图位置：切片详情、相似内容、敏感等级、审核意见、通过、退回、下线操作。}
+
+\screenshotplaceholder[0.9\textwidth]{6.4cm}{管理端术语维护页}{预留术语维护截图位置：术语列表、语种字段、标准译名、适用范围、冲突提示。}
+
+\screenshotplaceholder[0.9\textwidth]{6.4cm}{管理端文化图谱维护页}{预留图谱维护截图位置：实体列表、关系编辑、图谱预览、影响范围提示。}
+
+\screenshotplaceholder[0.9\textwidth]{6.4cm}{管理端用户权限页}{预留用户权限截图位置：用户列表、角色分配、权限矩阵、登录日志。}
+
+\paragraph{监控端界面截图预留}
+
+\screenshotplaceholder[0.9\textwidth]{6.4cm}{模型调用日志页}{预留模型调用日志截图位置：请求编号、模型名称、耗时、输入摘要、检索来源、错误信息。}
+
+\screenshotplaceholder[0.9\textwidth]{6.4cm}{系统运行状态页}{预留运行状态截图位置：服务健康、数据库状态、队列长度、架构审计结果、告警列表。}
+
+\subsubsection{内部服务接口}
+
+\begin{longtable}{p{5.4cm}p{3.7cm}p{3.5cm}}
+\toprule
+接口 & 输入 & 输出 \\
+\midrule
+\code{AuthService.checkPermission} & userId、resource、action & allowed、denyReason \\
+\code{GuideService.submitQuestion} & sessionId、query、inputType & messageId、answer、sources \\
+\code{AIOrchestrator.process} & query、inputType、targetLanguage & normalizedQuery、answer、trace \\
+\code{KnowledgeService.search} & query、spotId、language、topK & reviewedChunks、scores \\
+\code{GraphService.queryRelations} & entityNames、relationTypes & relationResult \\
+\code{TermService.applyTerms} & text、targetLanguage、topicTags & normalizedText、termHits \\
+\code{ReviewService.createTask} & objectType、objectId、riskLevel & taskId、status \\
+\code{LogService.recordModelCall} & requestId、modelName、input、output、latency & logId \\
+\code{TrainingService.scoreSubmission} & recordId、transcript、sceneId & scoreDetail、reportId \\
+\bottomrule
+\end{longtable}
+
+\subsubsection{模型适配接口}
+
+\begin{longtable}{p{3.7cm}p{3.2cm}p{6.0cm}}
+\toprule
+适配器 & 推荐模型 & 接口职责 \\
+\midrule
+ASRAdapter & Whisper / faster-whisper & 输入音频文件，输出转写文本、语种和置信度。 \\
+TranslationAdapter & NLLB-200 & 完成中文、英文和重点南亚东南亚语种互译，并支持术语表约束。 \\
+VisionAdapter & Qwen2.5-VL & 识别景点、文物、菜单、标识牌、OCR 文本和地点线索。 \\
+EmbeddingAdapter & BGE-M3 & 将问题和知识切片转换为向量，用于 Milvus 检索。 \\
+LLMAdapter & Qwen3-14B-Instruct & 基于检索上下文生成问答、讲解、摘要和实训评分说明。 \\
+TTSAdapter & Piper / MeloTTS & 将回答文本转换为可播放音频。 \\
+\bottomrule
+\end{longtable}
+
+\subsection{数据存储详细设计}
+
+\subsubsection{核心 ER 关系}
+
+\diagramimage[0.68\textwidth]{design-data-storage-er.png}{数据存储 ER 设计图}
+
+\subsubsection{数据库表设计}
+
+数据库采用 PostgreSQL 保存结构化业务数据。表结构以用户身份、导览会话、知识审核、实训评分、导游协同和模型调用追踪为主线设计，主键统一使用 UUID，时间字段统一保存为带时区时间，枚举值在应用层和数据库约束中同时校验。
+
+\begin{longtable}{@{}p{2.1cm}p{1.9cm}p{2.45cm}p{0.8cm}p{5.25cm}@{}}
+\caption{用户表结构}\\
+\toprule
+字段名 & 描述 & 类型 & 非空 & 约束/默认值 \\
+\midrule
+\endfirsthead
+\toprule
+字段名 & 描述 & 类型 & 非空 & 约束/默认值 \\
+\midrule
+\endhead
+\multicolumn{5}{@{}p{12.5cm}@{}}{表名：\texttt{users}；描述：存储游客、学生、导游和管理员账号；主键：\texttt{user\_id}；索引：\texttt{idx\_users\_username}、\texttt{idx\_users\_role}。} \\
+\code{user_id} & 用户编号 & uuid & 是 & 主键，默认生成 \\
+\code{username} & 登录账号 & varchar(64) & 是 & 唯一 \\
+\code{password_hash} & 密码摘要 & text & 是 & 使用加盐哈希保存 \\
+\code{display_name} & 显示名称 & varchar(64) & 是 & 默认与账号一致 \\
+\code{role} & 用户角色 & varchar(24) & 是 & tourist/student/guide/admin \\
+\code{language_preference} & 默认语言 & varchar(16) & 否 & 默认 zh-CN \\
+\code{phone} & 手机号 & varchar(32) & 否 & 可空 \\
+\code{email} & 邮箱 & varchar(128) & 否 & 可空 \\
+\code{status} & 账号状态 & varchar(20) & 是 & active/disabled/locked \\
+\code{created_at} & 创建时间 & timestamptz & 是 & 默认当前时间 \\
+\code{updated_at} & 更新时间 & timestamptz & 是 & 默认当前时间 \\
+\bottomrule
+\end{longtable}
+
+\begin{longtable}{@{}p{2.1cm}p{1.9cm}p{2.45cm}p{0.8cm}p{5.25cm}@{}}
+\caption{角色权限表结构}\\
+\toprule
+字段名 & 描述 & 类型 & 非空 & 约束/默认值 \\
+\midrule
+\endfirsthead
+\toprule
+字段名 & 描述 & 类型 & 非空 & 约束/默认值 \\
+\midrule
+\endhead
+\multicolumn{5}{@{}p{12.5cm}@{}}{表名：\texttt{roles}；描述：存储角色定义；主键：\texttt{role\_id}；索引：\texttt{idx\_roles\_code}。} \\
+\code{role_id} & 角色编号 & uuid & 是 & 主键 \\
+\code{role_code} & 角色编码 & varchar(32) & 是 & 唯一 \\
+\code{role_name} & 角色名称 & varchar(64) & 是 & 游客、学生、导游、管理员 \\
+\code{description} & 角色说明 & text & 否 & 可空 \\
+\code{created_at} & 创建时间 & timestamptz & 是 & 默认当前时间 \\
+\multicolumn{5}{@{}p{12.5cm}@{}}{表名：\texttt{permissions}；描述：存储接口和页面权限；主键：\texttt{permission\_id}；索引：\texttt{idx\_permissions\_resource}。} \\
+\code{permission_id} & 权限编号 & uuid & 是 & 主键 \\
+\code{resource} & 资源编码 & varchar(96) & 是 & 如 guide.answer \\
+\code{action} & 操作动作 & varchar(32) & 是 & read/create/update/delete \\
+\code{description} & 权限说明 & text & 否 & 可空 \\
+\multicolumn{5}{@{}p{12.5cm}@{}}{表名：\texttt{role\_permissions}；描述：角色权限关联；主键：\texttt{role\_id}、\texttt{permission\_id}。} \\
+\code{role_id} & 角色编号 & uuid & 是 & 外键到 roles \\
+\code{permission_id} & 权限编号 & uuid & 是 & 外键到 permissions \\
+\bottomrule
+\end{longtable}
+
+\begin{longtable}{@{}p{2.1cm}p{1.9cm}p{2.45cm}p{0.8cm}p{5.25cm}@{}}
+\caption{导览会话与消息表结构}\\
+\toprule
+字段名 & 描述 & 类型 & 非空 & 约束/默认值 \\
+\midrule
+\endfirsthead
+\toprule
+字段名 & 描述 & 类型 & 非空 & 约束/默认值 \\
+\midrule
+\endhead
+\multicolumn{5}{@{}p{12.5cm}@{}}{表名：\texttt{guide\_sessions}；描述：保存游客导览会话；主键：\texttt{session\_id}；索引：\texttt{idx\_sessions\_user}、\texttt{idx\_sessions\_status}。} \\
+\code{session_id} & 会话编号 & uuid & 是 & 主键 \\
+\code{user_id} & 用户编号 & uuid & 否 & 匿名游客可空 \\
+\code{spot_id} & 景点编号 & uuid & 否 & 可空 \\
+\code{language} & 会话语言 & varchar(16) & 是 & 默认 zh-CN \\
+\code{status} & 会话状态 & varchar(20) & 是 & active/taken/closed \\
+\code{summary} & 会话摘要 & text & 否 & 供导游接管使用 \\
+\code{risk_level} & 风险等级 & smallint & 是 & 默认 0 \\
+\code{created_at} & 创建时间 & timestamptz & 是 & 默认当前时间 \\
+\multicolumn{5}{@{}p{12.5cm}@{}}{表名：\texttt{messages}；描述：保存每轮问答内容；主键：\texttt{message\_id}；索引：\texttt{idx\_messages\_session}。} \\
+\code{message_id} & 消息编号 & uuid & 是 & 主键 \\
+\code{session_id} & 会话编号 & uuid & 是 & 外键到会话表 \\
+\code{role} & 消息角色 & varchar(16) & 是 & user/assistant/guide/system \\
+\code{input_type} & 输入类型 & varchar(16) & 是 & text/audio/image/location \\
+\code{question} & 用户问题 & text & 否 & 可空 \\
+\code{answer} & 系统回答 & text & 否 & 可空 \\
+\code{source_refs} & 来源引用 & jsonb & 否 & 知识切片编号和标题 \\
+\code{reliable} & 是否可靠 & boolean & 是 & 默认 false \\
+\code{created_at} & 创建时间 & timestamptz & 是 & 默认当前时间 \\
+\bottomrule
+\end{longtable}
+
+\begin{longtable}{@{}p{2.1cm}p{1.9cm}p{2.45cm}p{0.8cm}p{5.25cm}@{}}
+\caption{知识库表结构}\\
+\toprule
+字段名 & 描述 & 类型 & 非空 & 约束/默认值 \\
+\midrule
+\endfirsthead
+\toprule
+字段名 & 描述 & 类型 & 非空 & 约束/默认值 \\
+\midrule
+\endhead
+\multicolumn{5}{@{}p{12.5cm}@{}}{表名：\texttt{knowledge\_documents}；描述：保存原始文旅资料元数据；主键：\texttt{document\_id}；索引：\texttt{idx\_documents\_status}。} \\
+\code{document_id} & 文档编号 & uuid & 是 & 主键 \\
+\code{title} & 文档标题 & varchar(200) & 是 & 非空 \\
+\code{source} & 资料来源 & varchar(200) & 是 & 官方网站、教材、景区资料等 \\
+\code{version} & 文档版本 & varchar(32) & 是 & 默认 v1 \\
+\code{file_url} & 文件地址 & text & 否 & MinIO 对象地址 \\
+\code{review_status} & 审核状态 & varchar(24) & 是 & draft、pending、approved、rejected、offline \\
+\code{created_by} & 上传人 & uuid & 是 & 外键到 users \\
+\code{created_at} & 上传时间 & timestamptz & 是 & 默认当前时间 \\
+\multicolumn{5}{@{}p{12.5cm}@{}}{表名：\texttt{knowledge\_chunks}；描述：保存 RAG 检索文本切片；主键：\texttt{chunk\_id}；索引：\texttt{idx\_chunks\_document}、\texttt{idx\_chunks\_status}。} \\
+\code{chunk_id} & 切片编号 & uuid & 是 & 主键 \\
+\code{document_id} & 文档编号 & uuid & 是 & 外键到知识文档表 \\
+\code{title} & 切片标题 & varchar(200) & 否 & 可空 \\
+\code{content} & 切片正文 & text & 是 & 非空 \\
+\code{language} & 语言 & varchar(16) & 是 & 默认 zh-CN \\
+\code{tags} & 标签 & jsonb & 否 & 景点、民族、节庆等 \\
+\code{sensitive_level} & 敏感等级 & smallint & 是 & 默认 0 \\
+\code{review_status} & 审核状态 & varchar(24) & 是 & approved 才可检索 \\
+\code{vector_id} & 向量编号 & varchar(96) & 否 & 对应 Milvus 主键 \\
+\bottomrule
+\end{longtable}
+
+\begin{longtable}{@{}p{2.1cm}p{1.9cm}p{2.45cm}p{0.8cm}p{5.25cm}@{}}
+\caption{术语与文化图谱表结构}\\
+\toprule
+字段名 & 描述 & 类型 & 非空 & 约束/默认值 \\
+\midrule
+\endfirsthead
+\toprule
+字段名 & 描述 & 类型 & 非空 & 约束/默认值 \\
+\midrule
+\endhead
+\multicolumn{5}{@{}p{12.5cm}@{}}{表名：\texttt{terms}；描述：保存多语术语；主键：\texttt{term\_id}；索引：\texttt{idx\_terms\_name\_lang}。} \\
+\code{term_id} & 术语编号 & uuid & 是 & 主键 \\
+\code{zh_name} & 中文名称 & varchar(120) & 是 & 非空 \\
+\code{target_language} & 目标语言 & varchar(16) & 是 & 如 en、fr、ja \\
+\code{translation} & 标准译名 & varchar(200) & 是 & 非空 \\
+\code{scene} & 使用场景 & varchar(80) & 否 & 景区、饮食、宗教等 \\
+\code{review_status} & 审核状态 & varchar(24) & 是 & approved 才可使用 \\
+\multicolumn{5}{@{}p{12.5cm}@{}}{表名：\texttt{culture\_entities}；描述：保存文化实体；主键：\texttt{entity\_id}；索引：\texttt{idx\_entities\_type}。} \\
+\code{entity_id} & 实体编号 & uuid & 是 & 主键 \\
+\code{name} & 实体名称 & varchar(120) & 是 & 非空 \\
+\code{entity_type} & 实体类型 & varchar(32) & 是 & spot、city、food、festival、custom \\
+\code{description} & 实体说明 & text & 否 & 可空 \\
+\multicolumn{5}{@{}p{12.5cm}@{}}{表名：\texttt{culture\_relations}；描述：保存实体关系；主键：\texttt{relation\_id}；索引：\texttt{idx\_relations\_source}。} \\
+\code{relation_id} & 关系编号 & uuid & 是 & 主键 \\
+\code{source_id} & 源实体 & uuid & 是 & 外键到文化实体表 \\
+\code{target_id} & 目标实体 & uuid & 是 & 外键到文化实体表 \\
+\code{relation_type} & 关系类型 & varchar(48) & 是 & \code{located_in}、\code{related_to}、\code{taboo_of} \\
+\code{confidence} & 置信度 & numeric(4,3) & 是 & 默认 1.000 \\
+\bottomrule
+\end{longtable}
+
+\begin{longtable}{@{}p{2.1cm}p{1.9cm}p{2.45cm}p{0.8cm}p{5.25cm}@{}}
+\caption{实训与协同表结构}\\
+\toprule
+字段名 & 描述 & 类型 & 非空 & 约束/默认值 \\
+\midrule
+\endfirsthead
+\toprule
+字段名 & 描述 & 类型 & 非空 & 约束/默认值 \\
+\midrule
+\endhead
+\multicolumn{5}{@{}p{12.5cm}@{}}{表名：\texttt{training\_records}；描述：保存学生实训提交；主键：\texttt{record\_id}；索引：\texttt{idx\_training\_student}。} \\
+\code{record_id} & 记录编号 & uuid & 是 & 主键 \\
+\code{student_id} & 学生编号 & uuid & 是 & 外键到 users \\
+\code{scene_id} & 场景编号 & uuid & 是 & 对应训练场景 \\
+\code{audio_url} & 录音地址 & text & 否 & MinIO 对象地址 \\
+\code{transcript} & 转写文本 & text & 否 & 可空 \\
+\code{score} & 总分 & numeric(5,2) & 否 & 0 到 100 \\
+\code{detail_scores} & 分项得分 & jsonb & 否 & 准确性、礼仪、表达等 \\
+\code{created_at} & 提交时间 & timestamptz & 是 & 默认当前时间 \\
+\multicolumn{5}{@{}p{12.5cm}@{}}{表名：\texttt{guide\_corrections}；描述：保存导游修正内容；主键：\texttt{correction\_id}；索引：\texttt{idx\_corrections\_message}。} \\
+\code{correction_id} & 修正编号 & uuid & 是 & 主键 \\
+\code{guide_id} & 导游编号 & uuid & 是 & 外键到 users \\
+\code{message_id} & 原消息编号 & uuid & 是 & 外键到 messages \\
+\code{corrected_content} & 修正内容 & text & 是 & 非空 \\
+\code{review_status} & 审核状态 & varchar(24) & 是 & pending/approved/rejected \\
+\code{created_at} & 提交时间 & timestamptz & 是 & 默认当前时间 \\
+\bottomrule
+\end{longtable}
+
+\begin{longtable}{@{}p{2.1cm}p{1.9cm}p{2.45cm}p{0.8cm}p{5.25cm}@{}}
+\caption{审核、日志与反馈表结构}\\
+\toprule
+字段名 & 描述 & 类型 & 非空 & 约束/默认值 \\
+\midrule
+\endfirsthead
+\toprule
+字段名 & 描述 & 类型 & 非空 & 约束/默认值 \\
+\midrule
+\endhead
+\multicolumn{5}{@{}p{12.5cm}@{}}{表名：\texttt{review\_tasks}；描述：保存知识、术语、修正和案例审核任务；主键：\texttt{task\_id}；索引：\texttt{idx\_review\_status}。} \\
+\code{task_id} & 审核任务编号 & uuid & 是 & 主键 \\
+\code{object_type} & 对象类型 & varchar(32) & 是 & document、chunk、term、correction、case \\
+\code{object_id} & 对象编号 & uuid & 是 & 业务对象主键 \\
+\code{review_status} & 审核状态 & varchar(24) & 是 & pending/approved/rejected \\
+\code{reviewer_id} & 审核人 & uuid & 否 & 外键到 users \\
+\code{comment} & 审核意见 & text & 否 & 可空 \\
+\code{created_at} & 创建时间 & timestamptz & 是 & 默认当前时间 \\
+\multicolumn{5}{@{}p{12.5cm}@{}}{表名：\texttt{model\_call\_logs}；描述：保存 AI 调用链路；主键：\texttt{log\_id}；索引：\texttt{idx\_logs\_request}、\texttt{idx\_logs\_model}。} \\
+\code{log_id} & 日志编号 & uuid & 是 & 主键 \\
+\code{request_id} & 请求编号 & varchar(64) & 是 & 单次请求链路编号 \\
+\code{message_id} & 消息编号 & uuid & 否 & 外键到 messages \\
+\code{model_name} & 模型名称 & varchar(96) & 是 & 如 Qwen、BGE-M3 \\
+\code{provider} & 服务提供方 & varchar(64) & 是 & local/ollama/vllm/cloud \\
+\code{latency_ms} & 耗时 & integer & 是 & 毫秒 \\
+\code{status} & 调用状态 & varchar(20) & 是 & success/failed/timeout \\
+\code{error_message} & 异常信息 & text & 否 & 可空 \\
+\multicolumn{5}{@{}p{12.5cm}@{}}{表名：\texttt{feedback}；描述：保存游客、学生和导游反馈；主键：\texttt{feedback\_id}；索引：\texttt{idx\_feedback\_status}。} \\
+\code{feedback_id} & 反馈编号 & uuid & 是 & 主键 \\
+\code{message_id} & 消息编号 & uuid & 否 & 外键到 messages \\
+\code{user_id} & 用户编号 & uuid & 否 & 匿名反馈可空 \\
+\code{rating} & 评分 & smallint & 否 & 1 到 5 \\
+\code{content} & 反馈内容 & text & 否 & 可空 \\
+\code{status} & 处理状态 & varchar(20) & 是 & open/processing/closed \\
+\bottomrule
+\end{longtable}
+
+\subsubsection{非关系数据设计}
+
+\begin{longtable}{p{2.8cm}p{3.7cm}p{6.7cm}}
+\toprule
+存储组件 & 数据内容 & 设计说明 \\
+\midrule
+Milvus & chunkId、embedding、spotId、topicTags、reviewStatus & 只索引审核通过或可检索状态的知识切片，检索后仍需回查 PostgreSQL 状态。 \\
+Neo4j & 景点、城市、民族、节庆、非遗、建筑、饮食、禁忌、路线关系 & 支持文化关联解释和路线推荐补充。 \\
+Redis & sessionContext、hotQuestions、token、temporaryTask & 缓存短期会话和热点结果，降低数据库压力。 \\
+MinIO & audio、image、document、ttsAudio & 保存二进制文件，数据库仅保存对象地址和元数据。 \\
+Loki/日志文件 & requestLog、modelLog、errorLog、auditLog & 支撑模型调用追踪、异常排查和操作审计。 \\
+\bottomrule
+\end{longtable}
+
+\subsection{异常与安全设计}
+
+\subsubsection{异常处理表}
+
+\begin{longtable}{p{3.3cm}p{4.2cm}p{5.4cm}}
+\toprule
+异常场景 & 前端提示 & 后端处理 \\
+\midrule
+未登录访问受限功能 & 请先登录后继续操作 & 返回 401，记录访问资源和来源 IP。 \\
+角色权限不足 & 当前账号无权访问该功能 & 返回 403，记录 userId、resource、action。 \\
+知识库无可信资料 & 暂无可靠资料 & 禁止 LLM 自由编造，记录 missedQuery 用于知识补充。 \\
+ASR 失败 & 语音识别失败，请重新录制 & 保留音频对象和错误信息，允许重试。 \\
+图片识别失败 & 图片内容暂无法识别 & 记录 VisionAdapter 错误，允许改用文字提问。 \\
+模型服务超时 & AI 服务繁忙，请稍后再试 & 触发重试或降级，记录模型、耗时和 traceId。 \\
+审核不通过 & 内容未通过审核 & 保存审核意见，禁止发布到正式知识库。 \\
+文件上传失败 & 文件格式或大小不符合要求 & 校验扩展名、MIME、大小和病毒扫描结果。 \\
+\bottomrule
+\end{longtable}
+
+\subsubsection{安全控制}
+
+\begin{enumerate}
+  \item 接口认证使用访问令牌或服务端会话，管理端、导游端和学生端必须登录。
+  \item 角色权限按资源和动作控制，避免学生访问管理端、导游访问全量模型日志。
+  \item 用户输入、上传文件和知识文档均需格式校验，图片和音频文件不直接执行。
+  \item 敏感内容、民族宗教内容和政策类内容必须经过审核状态过滤。
+  \item 日志中应对手机号、证件号、定位细节等敏感字段脱敏。
+  \item 管理员审核、导游修正、知识发布和权限变更必须记录审计日志。
+\end{enumerate}
+
+\subsection{可观测性与维护设计}
+
+\begin{longtable}{p{2.8cm}p{4.2cm}p{6.2cm}}
+\toprule
+对象 & 指标/日志 & 维护用途 \\
+\midrule
+HTTP API & 请求量、状态码、耗时、错误率 & 发现接口异常、性能瓶颈和高频访问路径。 \\
+模型调用 & 模型名称、版本、输入长度、耗时、失败原因 & 判断模型服务是否稳定，支持模型版本回溯。 \\
+RAG 检索 & query、召回 chunk、相似度、过滤原因 & 分析知识库覆盖率和检索质量。 \\
+审核流程 & taskId、对象类型、处理人、处理意见、状态变化 & 支撑内容治理和责任追踪。 \\
+用户反馈 & messageId、评分、反馈内容、处理状态 & 形成知识修订和模型优化闭环。 \\
+基础设施 & CPU、内存、GPU、磁盘、网络、容器状态 & 支撑运维告警、扩容和故障定位。 \\
+\bottomrule
+\end{longtable}
+
+\subsection{设计约束与运行保障}
+
+\begin{enumerate}
+  \item 新增语种时，应优先配置术语表、翻译适配器和 TTS 参数，不修改导览主流程。
+  \item 新增景区时，应通过知识文档、知识切片、图谱实体和景点配置入库完成。
+  \item 新增模型时，只实现对应 Adapter，并在 AI 编排配置中切换模型名称和版本。
+  \item 新增训练场景时，只新增场景模板、评分规则和虚拟游客配置。
+  \item 当并发量提升时，优先拆分模型推理服务、导览服务和知识检索服务，并对热点查询启用 Redis 缓存。
+\end{enumerate}
+
+

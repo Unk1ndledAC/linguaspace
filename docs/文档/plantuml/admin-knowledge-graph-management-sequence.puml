@@ -1,0 +1,24 @@
+﻿@startuml
+title 管理员维护知识图谱顺序图（BCE）
+actor 管理员
+boundary "管理端图谱界面" as UI <<boundary>>
+control "图谱控制器" as GraphCtl <<control>>
+entity "文化实体" as Entity <<entity>>
+entity "文化关系" as Relation <<entity>>
+participant "图谱校验工具" as Validator <<utility>>
+
+管理员 -> UI : 查询实体和关系
+UI -> GraphCtl : queryGraph(filters)
+GraphCtl -> Entity : queryEntities(filters)
+GraphCtl -> Relation : queryRelations(filters)
+Entity --> GraphCtl : entities
+Relation --> GraphCtl : relations
+GraphCtl --> UI : showGraph(entities, relations)
+管理员 -> UI : 新增/修改实体或关系
+UI -> GraphCtl : saveGraphChange(changeForm)
+GraphCtl -> Validator : validateGraphChange(changeForm)
+Validator --> GraphCtl : validateResult
+GraphCtl -> Entity : saveEntityIfNeeded(changeForm)
+GraphCtl -> Relation : saveRelationIfNeeded(changeForm)
+GraphCtl --> UI : saveResult(success)
+@enduml

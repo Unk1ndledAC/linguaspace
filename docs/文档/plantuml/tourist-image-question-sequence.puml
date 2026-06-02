@@ -1,0 +1,27 @@
+﻿@startuml
+title 游客图片提问顺序图（BCE）
+actor 游客
+boundary "游客端图片问答界面" as UI <<boundary>>
+control "图片问答控制器" as ImageCtl <<control>>
+control "智能导览控制器" as GuideCtl <<control>>
+entity "上传图片" as Image <<entity>>
+entity "知识片段" as Chunk <<entity>>
+entity "会话记录" as Session <<entity>>
+participant "图像理解/OCR工具" as Vision <<utility>>
+participant "RAG检索器" as RAG <<utility>>
+
+游客 -> UI : 上传图片并输入问题
+UI -> ImageCtl : submitImageQuestion(image, question)
+ImageCtl -> Image : save(image)
+ImageCtl -> Vision : recognize(image)
+Vision --> ImageCtl : objects, ocrText, locationHint
+ImageCtl -> RAG : search(objects, ocrText, question)
+RAG -> Chunk : queryReviewedChunks()
+Chunk --> RAG : reviewedChunks
+RAG --> ImageCtl : retrievalResult
+ImageCtl -> GuideCtl : generateImageAnswer(question, retrievalResult)
+GuideCtl -> Session : saveImageQuestionAndAnswer()
+GuideCtl --> ImageCtl : answer
+ImageCtl --> UI : displayAnswer(answer)
+UI --> 游客 : 展示图片讲解
+@enduml

@@ -1,0 +1,55 @@
+﻿@startuml
+title 用户与权限管理子系统类图
+skinparam classAttributeIconSize 0
+
+class "用户 User" as User {
+  - userId: String
+  - username: String
+  - passwordHash: String
+  - roleId: String
+  - languagePreference: String
+  - status: AccountStatus
+  + login(password: String): Boolean
+  + logout(): void
+  + updateProfile(profile: UserProfile): void
+  + disable(): void
+}
+
+class "角色 Role" as Role {
+  - roleId: String
+  - roleName: String
+  - description: String
+  + addPermission(permission: Permission): void
+  + removePermission(permissionId: String): void
+}
+
+class "权限 Permission" as Permission {
+  - permissionId: String
+  - permissionCode: String
+  - resource: String
+  - action: String
+  + match(resource: String, action: String): Boolean
+}
+
+class "登录日志 LoginLog" as LoginLog {
+  - logId: String
+  - userId: String
+  - loginTime: DateTime
+  - ipAddress: String
+  - result: LoginResult
+  + recordLogin(): void
+}
+
+class "权限服务 AuthService" as AuthService {
+  + authenticate(username: String, password: String): User
+  + checkPermission(user: User, action: String): Boolean
+  + assignRole(userId: String, roleId: String): void
+}
+
+User "*" --> "1" Role : 拥有
+Role "1" o-- "*" Permission : 包含
+User "1" --> "*" LoginLog : 产生
+AuthService ..> User : 认证
+AuthService ..> Role : 查询角色
+AuthService ..> Permission : 校验权限
+@enduml

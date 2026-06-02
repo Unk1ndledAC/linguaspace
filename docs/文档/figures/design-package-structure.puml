@@ -1,0 +1,61 @@
+@startuml
+skinparam dpi 160
+skinparam shadowing false
+skinparam packageStyle rectangle
+title 系统软件包结构图
+
+package "client" {
+  [tourist-ui]
+  [student-ui]
+  [guide-ui]
+  [admin-ui]
+}
+
+package "api" {
+  [auth-middleware]
+  [request-validator]
+  [route-controller]
+}
+
+package "services" {
+  [guide-service]
+  [training-service]
+  [knowledge-service]
+  [collaboration-service]
+  [review-service]
+  [log-service]
+}
+
+package "ai" {
+  [asr-adapter]
+  [translation-adapter]
+  [vision-adapter]
+  [embedding-adapter]
+  [llm-adapter]
+  [tts-adapter]
+}
+
+package "repositories" {
+  [user-repository]
+  [session-repository]
+  [knowledge-repository]
+  [training-repository]
+  [review-repository]
+}
+
+package "infrastructure" {
+  [postgresql]
+  [milvus]
+  [neo4j]
+  [redis]
+  [minio]
+  [monitoring]
+}
+
+client --> api
+api --> services
+services --> ai
+services --> repositories
+repositories --> infrastructure
+services --> infrastructure : 缓存、文件、日志
+@enduml
