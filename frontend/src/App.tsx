@@ -34,7 +34,10 @@ import {
   SystemUsersPage,
 } from "./pages/system/SystemPages";
 import { IntroArchitecturePage, IntroFeaturesPage, IntroRoadmapPage, IntroScenariosPage } from "./pages/intro/IntroPages";
-import { TouristCultureTipsPage, TouristRoutesPage } from "./pages/tourist/TouristExtraPages";
+import { TouristCultureTipsPage, TouristHistoryPage, TouristRoutesPage } from "./pages/tourist/TouristExtraPages";
+import { TouristImagePage } from "./pages/tourist/TouristImagePage";
+import { TouristVoicePage } from "./pages/tourist/TouristVoicePage";
+import { StudentHomePage, StudentReportPage, StudentScenarioPage, StudentTrainingPage } from "./pages/student/StudentPages";
 
 export default function App() {
   return (
@@ -53,11 +56,11 @@ export default function App() {
           <Route index element={<Navigate replace to="home" />} />
           <Route path="home" element={<TouristHomePage />} />
           <Route path="chat" element={<TouristChatPage />} />
-          <Route path="voice" element={<Navigate replace to="/tourist/chat" />} />
-          <Route path="image" element={<Navigate replace to="/tourist/chat" />} />
+          <Route path="voice" element={<TouristVoicePage />} />
+          <Route path="image" element={<TouristImagePage />} />
           <Route path="routes" element={<TouristRoutesPage />} />
           <Route path="culture-tips" element={<TouristCultureTipsPage />} />
-          <Route path="history" element={<Navigate replace to="/tourist/chat" />} />
+          <Route path="history" element={<TouristHistoryPage />} />
         </Route>
         <Route path="guide" element={<TourismLayout module="guide" />}>
           <Route index element={<Navigate replace to="dashboard" />} />
@@ -68,6 +71,13 @@ export default function App() {
           <Route path="corrections" element={<GuideCorrectionsPage />} />
           <Route path="cases" element={<GuideCasesPage />} />
           <Route path="profile" element={<GuideProfilePage />} />
+        </Route>
+        <Route path="student" element={<TourismLayout module="student" />}>
+          <Route index element={<Navigate replace to="home" />} />
+          <Route path="home" element={<StudentHomePage />} />
+          <Route path="scenarios" element={<StudentScenarioPage />} />
+          <Route path="training" element={<StudentTrainingPage />} />
+          <Route path="reports" element={<StudentReportPage />} />
         </Route>
         <Route path="knowledge" element={<AdminLayout module="knowledge" />}>
           <Route index element={<Navigate replace to="documents" />} />

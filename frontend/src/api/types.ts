@@ -67,3 +67,6 @@ export type Feedback = { id: string; message_id: string; rating: number; content
 export type Favorite = { id: string; session_id: string; item_type: string; item_id: string; title: string; created_at: string };
 export type CultureTip = { id: string; title: string; summary: string; tags: string[]; source: string };
 export type OverviewStats = { knowledge_items: number; graph_relations: number; routes: number; terms: number; today_questions: number; today_sessions: number; pending_reviews: number };
+export type TrainingScenario = { id: string; language: string; scene: string; visitor_type: string; question: string; reference_answers?: string[] };
+export type TrainingRecord = { id: string; scenario: string; question: string; answer: string; score: number; metrics_json: string; feedback_json: string; judge_mode: string; created_at: string };
+export type ScoreReport = { total: number; metrics: Record<string, number>; feedback: string[]; judge_mode: string; guardrail_triggered: boolean; coverage: { score: number; covered: string[]; missing: string[]; total: number }; record_id: string };

@@ -281,6 +281,18 @@ def _find_reference_answers(scene: str, question: str) -> str:
     return ""
 
 
+def _parse_reference_answers(value: str) -> list[str]:
+    if not value:
+        return []
+    try:
+        parsed = json.loads(value)
+        if isinstance(parsed, list):
+            return [str(item).strip() for item in parsed if str(item).strip()]
+    except json.JSONDecodeError:
+        pass
+    return [item.strip() for item in value.split("|") if item.strip()]
+
+
 def _overview_stats() -> dict[str, Any]:
     today = datetime.now().date().isoformat()
     messages = runtime._all("messages", 5000)
@@ -769,7 +781,7 @@ def training_scenarios() -> dict[str, Any]:
     items = []
     for item in store.scenarios:
         clone = dict(item)
-        clone["reference_answers"] = json.loads(item.get("reference_answers", "[]"))
+        clone["reference_answers"] = _parse_reference_answers(item.get("reference_answers", ""))
         items.append(clone)
     return {"items": items}
 

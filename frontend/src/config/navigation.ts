@@ -8,6 +8,7 @@ import {
   Compass,
   Database,
   FileStack,
+  GraduationCap,
   HeartHandshake,
   House,
   Image,
@@ -26,12 +27,13 @@ import {
   ShieldCheck,
   Sparkles,
   SquareUserRound,
+  Trophy,
   UsersRound,
   Waypoints,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-export type ModuleKey = "intro" | "tourist" | "guide" | "knowledge" | "system";
+export type ModuleKey = "intro" | "tourist" | "guide" | "student" | "knowledge" | "system";
 
 export type PageSpec = {
   path: string;
@@ -48,6 +50,7 @@ export const modules: Record<ModuleKey, { label: string; home: string; tone: "to
   intro: { label: "项目介绍", home: "/intro/overview", tone: "tourism" },
   tourist: { label: "游客端", home: "/tourist/home", tone: "tourism" },
   guide: { label: "导游端", home: "/guide/dashboard", tone: "tourism" },
+  student: { label: "学生端", home: "/student/home", tone: "tourism" },
   knowledge: { label: "知识库维护", home: "/knowledge/documents", tone: "admin" },
   system: { label: "系统管理", home: "/system/dashboard", tone: "admin" },
 };
@@ -99,6 +102,10 @@ export const pageSpecs: Record<string, PageSpec> = Object.fromEntries(
     page("/system/logs", "调用日志", "模型调用与请求链路日志", "追踪真实模型调用、耗时、异常和请求链路。", ScrollText, ["日志筛选", "模型调用表格", "请求链路表格"], ["GET /api/logs/model-calls", "GET /api/logs/request-traces"]),
     page("/system/metrics", "指标分析", "系统指标分析", "展示请求量、语言分布、延迟、错误率和 RAG 命中趋势。", ChartNoAxesCombined, ["指标筛选", "趋势图表", "占比图表"], [], ["系统指标趋势接口"]),
     page("/system/settings", "系统设置", "系统设置", "查看后端地址、模型配置、审核策略和维护参数。", Settings, ["接口配置", "模型配置", "审核策略", "系统维护"], [], ["系统设置读写接口"]),
+    page("/student/home", "实训首页", "AI 导游实训", "快速进入虚拟带团训练、查看训练报告和知识点覆盖。", GraduationCap, ["训练概览", "快捷入口", "最近记录"], ["GET /api/training/scenarios", "GET /api/training/records"]),
+    page("/student/scenarios", "实训场景库", "实训场景库", "浏览后端真实训练场景，按游客类型和关键词筛选后进入虚拟带团训练。", BookOpenCheck, ["场景筛选", "场景卡片", "训练入口"], ["GET /api/training/scenarios"]),
+    page("/student/training", "虚拟带团", "虚拟带团训练", "选择训练场景，面对虚拟游客提问，提交语音或文字讲解并获得多维评分。", ShieldCheck, ["场景选择", "虚拟问答", "语音提交", "多维评分"], ["GET /api/training/scenarios", "POST /api/training/score", "POST /api/audio/transcribe"]),
+    page("/student/reports", "训练报告", "训练报告与成长轨迹", "查看历史训练记录、评分详情、知识点覆盖和改进建议。", Trophy, ["历史记录", "评分详情", "知识点覆盖", "改进建议"], ["GET /api/training/records"]),
   ].map((item) => [item.path, item]),
 );
 
@@ -106,6 +113,7 @@ export const modulePages: Record<ModuleKey, PageSpec[]> = {
   intro: ["/intro/overview", "/intro/architecture", "/intro/features", "/intro/scenarios", "/intro/roadmap"].map((path) => pageSpecs[path]),
   tourist: ["/tourist/home", "/tourist/chat", "/tourist/routes", "/tourist/culture-tips"].map((path) => pageSpecs[path]),
   guide: ["/guide/dashboard", "/guide/cases", "/guide/profile"].map((path) => pageSpecs[path]),
+  student: ["/student/home", "/student/scenarios", "/student/training", "/student/reports"].map((path) => pageSpecs[path]),
   knowledge: ["/knowledge/documents", "/knowledge/chunks", "/knowledge/graph", "/knowledge/review", "/knowledge/terms", "/knowledge/rag-test", "/knowledge/statistics"].map((path) => pageSpecs[path]),
   system: ["/system/dashboard", "/system/users", "/system/roles", "/system/permissions", "/system/health", "/system/logs", "/system/metrics", "/system/settings"].map((path) => pageSpecs[path]),
 };

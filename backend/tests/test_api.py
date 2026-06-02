@@ -12,6 +12,10 @@ def test_health_and_data_assets():
     assert client.get("/api/health").status_code == 200
     assert len(client.get("/api/knowledge").json()["items"]) >= 50
     assert len(client.get("/api/graph").json()["items"]) >= 150
+    scenarios = client.get("/api/training/scenarios")
+    assert scenarios.status_code == 200
+    assert len(scenarios.json()["items"]) >= 10
+    assert isinstance(scenarios.json()["items"][0]["reference_answers"], list)
 
 
 def test_rag_refuses_unknown_question():

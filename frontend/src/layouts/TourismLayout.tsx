@@ -77,6 +77,30 @@ export function TourismLayout({ module }: { module: ModuleKey }) {
     );
   }
 
+  if (module === "student") {
+    return (
+      <div className="tourism-shell module-student">
+        <aside className="student-sidebar">
+          <a className="brand-mark student-sidebar-brand" href="/intro/overview"><b>语界</b><span>LinguaSpace</span></a>
+          <div className="student-sidebar-caption"><span>GUIDE TRAINING</span><strong>{modules[module].label}</strong><small>AI 导游实训平台</small></div>
+          <SecondaryNav module={module} />
+          <div className="student-sidebar-portals">
+            <span>PLATFORM PORTALS</span>
+            <PrimaryNav compact />
+          </div>
+          <div className="student-sidebar-user"><RoleSwitcher /></div>
+        </aside>
+        <header className="tourism-header student-mobile-header">
+          <a className="brand-mark" href="/intro/overview"><b>语界</b><span>LinguaSpace</span></a>
+          <PrimaryNav />
+          <RoleSwitcher />
+        </header>
+        <div className="tourism-subnav student-mobile-subnav"><strong>{modules[module].label}</strong><SecondaryNav module={module} /></div>
+        <main className="tourism-content"><Outlet /></main>
+      </div>
+    );
+  }
+
   return (
     <div className={`tourism-shell module-${module}`}>
       <header className="tourism-header">
