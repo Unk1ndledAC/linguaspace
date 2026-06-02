@@ -42,9 +42,9 @@ const architectureFlow: Array<[LucideIcon, string, string]> = [
 
 const featureCards: Array<[LucideIcon, string, string, string, string, string]> = [
   [Languages, "多语文化问答", "统一术语与跨文化表达", "面向南亚、东南亚游客输出更自然、更一致的云南文化讲解。", "/tourist/chat", "/assets/intro-feature-multilingual-tour.png"],
-  [Mic, "语音随行导览", "ASR + RAG + TTS", "让游客边走边问，语音仍经过可信知识链路生成讲解。", "/tourist/voice", "/assets/intro-overview-mountain-ai-network.png"],
-  [Camera, "拍照识别讲解", "视觉理解 + 文化检索", "古建细节、街巷与文化场景都可以成为探索入口。", "/tourist/image", "/assets/intro-scenario-photo-recognition.png"],
-  [Route, "兴趣路线推荐", "真实路线库", "围绕古城、山水、非遗与民族文化发现云南旅行路径。", "/tourist/routes", "/assets/route-photography.png"],
+  [Mic, "语音随行导览", "ASR + RAG + TTS", "让游客边走边问，语音仍经过可信知识链路生成讲解。", "/tourist/voice", "/assets/public-rainforest-waterfall.jpg"],
+  [Camera, "拍照识别讲解", "视觉理解 + 文化检索", "古建细节、街巷与文化场景都可以成为探索入口。", "/tourist/image", "/assets/public-lijiang-rooftops.jpg"],
+  [Route, "兴趣路线推荐", "真实路线库", "围绕古城、山水、非遗与民族文化发现云南旅行路径。", "/tourist/routes", "/assets/public-yunnan-sunlit-terraces.jpg"],
   [Database, "RAG 文旅知识库", "可信 · 可追踪", "上传、切片、审核、向量化和检索测试共同构成知识工程底座。", "/knowledge/documents", "/assets/intro-feature-trusted-rag.png"],
   [Network, "文化知识图谱", "关系增强", "将地点、建筑、民俗、饮食与路线组织成可解释的文化网络。", "/knowledge/graph", "/assets/intro-feature-cultural-knowledge-graph.png"],
   [UserRoundCheck, "真人导游协同", "Human-in-the-loop", "低置信问题由导游接管，优质修正提交审核后回流。", "/guide/dashboard", "/assets/intro-scenario-human-guide-handoff.png"],
@@ -115,7 +115,7 @@ export function IntroFeaturesPage() {
         kicker="CAPABILITY MATRIX"
         title="一套文化底座，连接完整文旅服务"
         text="从游客随行导览，到真人导游协同，再到高校实训与知识资产沉淀，每一个能力都有真实业务入口。"
-        image="/assets/intro-feature-ai-guide-training.png"
+        image="/assets/public-yulong-mountain.jpg"
         accent="核心能力"
       />
       <IntroReveal className="intro-light-section">
@@ -145,7 +145,7 @@ export function IntroScenariosPage() {
         kicker="REAL USER JOURNEY"
         title="从一次旅行提问，到一套文旅知识资产"
         text="沿着游客、导游、专家与高校师生的真实旅程，理解 LinguaSpace 如何让每一次服务都成为系统成长的起点。"
-        image="/assets/intro-scenario-multilingual-visitors.png"
+        image="/assets/public-tour-guide-group.jpg"
         accent="应用场景"
       />
       <IntroReveal className="intro-light-section">
@@ -175,7 +175,7 @@ export function IntroRoadmapPage() {
         kicker="PRODUCT ROADMAP"
         title="从可信问答，走向跨境文旅智能生态"
         text="LinguaSpace 已经完成从知识增强导览到人机协同的基础闭环，并将继续围绕多语评测、动态信息和移动体验持续演进。"
-        image="/assets/intro-roadmap-yunnan-journey.png"
+        image="/assets/public-yunnan-sunlit-terraces.jpg"
         accent="建设路线"
       />
       <IntroReveal className="intro-light-section">

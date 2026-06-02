@@ -6,16 +6,16 @@ import { ErrorState } from "../../components/common/ErrorState";
 import { LoadingState } from "../../components/common/LoadingState";
 
 const entries = [
-  [MessageCircle, "多语问答", "用熟悉的语言，了解沿途文化故事。", "MULTILINGUAL RAG", "/tourist/chat", "/assets/tourist-recommend-scenic.png"],
-  [Mic, "语音导览", "边走边问，让云南山水慢慢被听见。", "VOICE GUIDE", "/tourist/chat", "/assets/tourist-recommend-heritage.png"],
-  [Camera, "拍照识别", "从古建细节与街巷风物中发现文化。", "VISION GUIDE", "/tourist/chat", "/assets/tourist-recommend-food.png"],
+  [MessageCircle, "多语问答", "用熟悉的语言，了解沿途文化故事。", "MULTILINGUAL RAG", "/tourist/chat", "/assets/public-yulong-mountain.jpg"],
+  [Mic, "语音导览", "边走边问，让云南山水慢慢被听见。", "VOICE GUIDE", "/tourist/chat", "/assets/public-rainforest-waterfall.jpg"],
+  [Camera, "拍照识别", "从古建细节与街巷风物中发现文化。", "VISION GUIDE", "/tourist/chat", "/assets/intro-scenario-photo-recognition.png"],
   [Map, "路线推荐", "按兴趣选择更适合自己的云南路径。", "SMART ROUTES", "/tourist/routes", "/assets/route-photography.png"],
 ] as const;
 
 const routeImages = [
-  "/assets/route-food.png",
+  "/assets/public-asian-noodle-bowls.jpg",
   "/assets/route-heritage.png",
-  "/assets/route-photography.png",
+  "/assets/public-yunnan-sunlit-terraces.jpg",
 ];
 
 export function TouristHomePage() {

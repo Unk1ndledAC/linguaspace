@@ -66,9 +66,9 @@ const pipeline: Array<[LucideIcon, string, string]> = [
 
 const scenarios = [
   ["外国游客多语问答", "跨越语言门槛，获取有文化依据的旅行讲解。", "/tourist/chat", "/assets/intro-scenario-multilingual-visitors.png", "EXPLORE"],
-  ["拍照识别讲解", "让古建细节、街巷与文化场景成为导览入口。", "/tourist/image", "/assets/intro-scenario-photo-recognition.png", "DISCOVER"],
-  ["导游人工接管", "在低置信与高风险时刻，把服务交给真人导游。", "/guide/takeover", "/assets/intro-scenario-human-guide-handoff.png", "COLLABORATE"],
-  ["高校 AI 导游实训", "围绕真实文旅知识开展讲解训练与能力评估。", "/intro/features", "/assets/intro-feature-ai-guide-training.png", "LEARN"],
+  ["拍照识别讲解", "让古建细节、街巷与文化场景成为导览入口。", "/tourist/image", "/assets/public-lijiang-rooftops.jpg", "DISCOVER"],
+  ["导游人工接管", "在低置信与高风险时刻，把服务交给真人导游。", "/guide/takeover", "/assets/public-tour-guide-group.jpg", "COLLABORATE"],
+  ["高校 AI 导游实训", "围绕真实文旅知识开展讲解训练与能力评估。", "/intro/features", "/assets/public-classroom-student.jpg", "LEARN"],
   ["文旅知识资产沉淀", "把优质讲解、术语与审核结果持续沉淀为资产。", "/knowledge/documents", "/assets/intro-scenario-knowledge-growth.png", "GROW"],
 ] as const;
 

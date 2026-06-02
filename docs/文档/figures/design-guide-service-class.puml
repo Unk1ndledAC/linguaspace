@@ -2,78 +2,24 @@
 skinparam dpi 160
 skinparam shadowing false
 skinparam classAttributeIconSize 0
-title 智能导览服务类图
+title 智能导览当前服务类图
 
-class GuideController {
-  -guideService: GuideService
-  -requestValidator: RequestValidator
-  +askText(request: TextQuestionDTO): GuideAnswerDTO
-  +askAudio(file: AudioFile): GuideAnswerDTO
-  +askImage(file: ImageFile, question: String): GuideAnswerDTO
-  +recommendRoute(request: RouteRequestDTO): RoutePlanDTO
-}
-class GuideService {
-  -ragService: RAGService
-  -graphService: GraphService
-  -aiOrchestrator: AIOrchestrator
-  -sessionRepository: GuideSessionRepository
-  -messageRepository: MessageRepository
-  +normalizeInput(input: UserInput): NormalizedQuestion
-  +buildAnswer(question: NormalizedQuestion): GuideAnswerDTO
-  +saveMessage(sessionId: UUID, answer: GuideAnswerDTO): Message
-  +handleFallback(reason: String): GuideAnswerDTO
-}
-class RAGService {
-  -knowledgeRepository: KnowledgeRepository
-  -vectorIndexService: VectorIndexService
-  +retrieveChunks(question: String, language: String): List<KnowledgeChunk>
-  +buildContext(chunks: List<KnowledgeChunk>): PromptContext
-  +filterReviewed(chunks: List<KnowledgeChunk>): List<KnowledgeChunk>
-}
-class GraphService {
-  -graphRepository: GraphRepository
-  +queryRelations(entityNames: List<String>): GraphContext
-  +recommendRoute(preference: RoutePreference): RoutePlanDTO
-  +expandCultureFacts(spotId: UUID): List<GraphFact>
-}
-class AIOrchestrator {
-  -llmAdapter: LLMAdapter
-  -asrAdapter: ASRAdapter
-  -visionAdapter: VisionAdapter
-  -ttsAdapter: TTSAdapter
-  -modelCallLogRepository: ModelCallLogRepository
-  +transcribe(audio: AudioFile): String
-  +recognizeImage(image: ImageFile): VisionResult
-  +translate(text: String, targetLanguage: String): String
-  +generate(context: PromptContext): ModelAnswer
-  +synthesize(text: String, voice: String): AudioUrl
-}
-class GuideSessionRepository {
-  -dataSource: PostgreSQL
-  -tableName: String
-  +findById(sessionId: UUID): GuideSession
-  +save(session: GuideSession): GuideSession
-  +updateStatus(sessionId: UUID, status: SessionStatus): void
-}
-class MessageRepository {
-  -dataSource: PostgreSQL
-  -tableName: String
-  +save(message: Message): Message
-  +findBySession(sessionId: UUID): List<Message>
-  +bindSources(messageId: UUID, chunks: List<KnowledgeChunk>): void
-}
-class ModelCallLogRepository {
-  -dataSource: PostgreSQL
-  -tableName: String
-  +save(log: ModelCallLog): ModelCallLog
-  +findByRequestId(requestId: String): List<ModelCallLog>
-}
+class "FastAPI 路由" as API
+class RuntimeStore
+class ContentStore
+class TranslationAdapter
+class LLMProvider
+class VisionProvider
+class CacheAdapter
+class ASRAdapter
+class TTSAdapter
 
-GuideController --> GuideService
-GuideService --> RAGService
-GuideService --> GraphService
-GuideService --> AIOrchestrator
-GuideService --> GuideSessionRepository
-GuideService --> MessageRepository
-AIOrchestrator --> ModelCallLogRepository
+API --> RuntimeStore
+API --> ContentStore
+API --> TranslationAdapter
+API --> LLMProvider
+API --> VisionProvider
+API --> CacheAdapter
+API --> ASRAdapter
+API --> TTSAdapter
 @enduml

@@ -1,28 +1,17 @@
 @startuml
 skinparam dpi 160
 skinparam shadowing false
-skinparam packageStyle rectangle
-skinparam rectangle {
-  BackgroundColor #F8FAFC
-  BorderColor #334155
-}
-title 系统设计五层架构图
+title LinguaSpace 当前五层架构
 
-rectangle "客户端层\n游客端 / 学生端 / 导游端 / 管理端" as Client
-rectangle "接口与网关层\nHTTP API / 鉴权 / 限流 / 参数校验" as Gateway
-rectangle "业务服务层\n导览服务 / 实训服务 / 协同服务 / 审核服务 / 日志服务" as Business
-rectangle "AI 编排层\nASR / 翻译 / 视觉 / 向量化 / LLM / TTS 适配器" as AI
-rectangle "知识增强层\nRAG 知识库 / 术语表 / 文化图谱 / 来源追踪" as Knowledge
-rectangle "数据与运维层\nPostgreSQL / Milvus / Neo4j / Redis / MinIO / 监控日志" as Data
+rectangle "React Web 客户端\n游客端 / 学生端 / 导游端 / 知识库 / 系统管理" as Web
+rectangle "FastAPI 接口层\nREST API / Bearer Token / 参数校验 / CORS" as API
+rectangle "业务编排层\n导览问答 / 实训评分 / 导游协同 / 审核发布 / 日志追踪" as Service
+rectangle "AI 与知识增强层\nOllama Provider / faster-whisper / Windows SAPI\n术语表 / 哈希向量检索 / 文化关系查询" as AI
+rectangle "数据与基础设施层\nMySQL / Redis / MinIO / Neo4j\nPostgreSQL/pgvector（预留）" as Infra
 
-Client --> Gateway : 提交请求
-Gateway --> Business : 路由到业务服务
-Business --> AI : 调用模型能力
-Business --> Knowledge : 检索可信上下文
-AI --> Knowledge : 向量化与生成增强
-Knowledge --> Data : 读取知识、图谱、向量
-Business --> Data : 持久化会话、训练、审核、日志
-Data --> Business : 返回数据与状态
-Business --> Gateway : 统一响应
-Gateway --> Client : 展示结果
+Web --> API : HTTP
+API --> Service : 路由分发
+Service --> AI : 调用 Provider 与检索
+Service --> Infra : 保存业务数据
+AI --> Infra : 缓存 / 文件 / 图谱镜像
 @enduml

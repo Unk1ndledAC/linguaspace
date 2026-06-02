@@ -2,60 +2,46 @@
 skinparam dpi 160
 skinparam shadowing false
 skinparam packageStyle rectangle
-title 系统软件包结构图
+title LinguaSpace 当前软件包结构
 
-package "client" {
-  [tourist-ui]
-  [student-ui]
-  [guide-ui]
-  [admin-ui]
+package "frontend/src" {
+  [App.tsx 路由]
+  [pages 页面]
+  [api 请求封装]
+  [store/AuthContext]
+}
+package "backend/app" {
+  [main.py FastAPI 路由]
+  [runtime_store.py 运行时业务表]
+  [store.py 内容与图谱存取]
+  [providers.py 模型 Provider]
+  [translation.py 术语翻译]
+  [scoring.py 实训评分]
+  [asr.py 语音识别]
+  [infrastructure.py 基础设施适配器]
+}
+package "scripts" {
+  [start-linguaspace.ps1]
+  [bootstrap_mysql.py]
+}
+package "Docker Compose" {
+  [MySQL]
+  [PostgreSQL/pgvector]
+  [Redis]
+  [MinIO]
+  [Neo4j]
 }
 
-package "api" {
-  [auth-middleware]
-  [request-validator]
-  [route-controller]
-}
-
-package "services" {
-  [guide-service]
-  [training-service]
-  [knowledge-service]
-  [collaboration-service]
-  [review-service]
-  [log-service]
-}
-
-package "ai" {
-  [asr-adapter]
-  [translation-adapter]
-  [vision-adapter]
-  [embedding-adapter]
-  [llm-adapter]
-  [tts-adapter]
-}
-
-package "repositories" {
-  [user-repository]
-  [session-repository]
-  [knowledge-repository]
-  [training-repository]
-  [review-repository]
-}
-
-package "infrastructure" {
-  [postgresql]
-  [milvus]
-  [neo4j]
-  [redis]
-  [minio]
-  [monitoring]
-}
-
-client --> api
-api --> services
-services --> ai
-services --> repositories
-repositories --> infrastructure
-services --> infrastructure : 缓存、文件、日志
+[App.tsx 路由] --> [pages 页面]
+[pages 页面] --> [api 请求封装]
+[api 请求封装] --> [main.py FastAPI 路由]
+[main.py FastAPI 路由] --> [runtime_store.py 运行时业务表]
+[main.py FastAPI 路由] --> [store.py 内容与图谱存取]
+[main.py FastAPI 路由] --> [providers.py 模型 Provider]
+[main.py FastAPI 路由] --> [translation.py 术语翻译]
+[main.py FastAPI 路由] --> [scoring.py 实训评分]
+[main.py FastAPI 路由] --> [asr.py 语音识别]
+[main.py FastAPI 路由] --> [infrastructure.py 基础设施适配器]
+[start-linguaspace.ps1] --> [bootstrap_mysql.py]
+[start-linguaspace.ps1] --> [Docker Compose]
 @enduml

@@ -2,70 +2,49 @@
 skinparam dpi 160
 skinparam shadowing false
 skinparam classAttributeIconSize 0
-title 用户与权限设计类图
+title 用户与权限当前设计类图
 
 class User {
-  +userId: UUID
-  +username: String
-  +passwordHash: String
-  +status: AccountStatus
-  +lastLoginAt: DateTime
-  +verifyPassword(rawPassword: String): Boolean
-  +lock(reason: String): void
-  +disable(): void
+  id
+  username
+  passwordHash
+  displayName
+  role
+  language
+  status
 }
 class Role {
-  +roleId: UUID
-  +roleCode: String
-  +roleName: String
-  +description: String
-  +addPermission(permission: Permission): void
-  +removePermission(permissionId: UUID): void
+  id
+  name
+  description
 }
 class Permission {
-  +permissionId: UUID
-  +resource: String
-  +action: String
-  +scope: String
-  +match(resource: String, action: String): Boolean
-}
-class UserRole {
-  +userId: UUID
-  +roleId: UUID
-  +assignedAt: DateTime
-  +expireAt: DateTime
-  +isExpired(): Boolean
+  id
+  name
+  module
 }
 class RolePermission {
-  +roleId: UUID
-  +permissionId: UUID
-  +createdAt: DateTime
-  +isValid(): Boolean
-}
-class LoginLog {
-  +logId: UUID
-  +userId: UUID
-  +loginTime: DateTime
-  +ipAddress: String
-  +result: String
-  +markSuccess(): void
-  +markFailure(reason: String): void
+  id
+  roleId
+  permissionId
 }
 class AuthService {
-  -userRepository: UserRepository
-  -roleRepository: RoleRepository
-  -tokenService: TokenService
-  +authenticate(username: String, password: String): AuthToken
-  +checkPermission(userId: UUID, resource: String, action: String): Boolean
-  +assignRole(userId: UUID, roleId: UUID): void
+  + login(username,password)
+  + issueToken(user)
+  + verifyToken(token)
+}
+class RuntimeStore {
+  + addUser()
+  + updateUser()
+  + listRoles()
+  + setRolePermissions()
 }
 
-User "1" -- "0..*" UserRole
-Role "1" -- "0..*" UserRole
-Role "1" -- "0..*" RolePermission
-Permission "1" -- "0..*" RolePermission
-User "1" -- "0..*" LoginLog
+Role "1" -- "*" RolePermission
+Permission "1" -- "*" RolePermission
+User ..> Role : role 字段关联
 AuthService ..> User
-AuthService ..> Role
-AuthService ..> Permission
+RuntimeStore ..> User
+RuntimeStore ..> Role
+RuntimeStore ..> Permission
 @enduml

@@ -1,27 +1,20 @@
 @startuml
 skinparam dpi 160
 skinparam shadowing false
-title 知识入库审核活动图
-
+title 知识入库当前审核活动图
 start
-:管理员上传文旅资料;
-:解析文件并抽取文本;
-:清洗噪声、去重、分段;
-:生成知识切片和元数据;
-:创建审核任务;
-if (人工审核通过?) then (通过)
-  :标记为 APPROVED;
-  :调用 Embedding 服务;
-  :写入向量索引;
-  :同步术语或图谱关系;
-  :发布到正式知识库;
-elseif (需要修改?) then (退回)
-  :记录退回原因;
-  :回到资料修订;
-else (拒绝)
-  :标记为 REJECTED;
-  :禁止进入检索链路;
+:管理员上传知识文档;
+:保存原文与元数据;
+:按段落和长度生成知识切片;
+:为每个切片创建 pending 审核任务;
+if (管理员审核通过?) then (是)
+  :将切片内容发布到正式知识库;
+  :允许进入 RAG 检索;
+elseif (退回?) then (是)
+  :记录 rejected 状态和审核意见;
+else (下线)
+  :记录 offline 状态;
 endif
-:记录审核日志;
+:保留文档和审核记录;
 stop
 @enduml

@@ -1,48 +1,32 @@
 @startuml
 skinparam dpi 160
 skinparam shadowing false
-title 部署拓扑设计图
+title LinguaSpace MVP 部署拓扑
 
-node "用户终端" {
-  artifact "H5 / 小程序 / Web 浏览器" as Browser
+node "用户浏览器" as Browser
+node "本机应用进程" {
+  component "Vite React Web\n5173-5190" as Web
+  component "FastAPI\n8000" as API
+  component "Ollama\n11434" as Ollama
+  component "faster-whisper\n按配置启用" as ASR
+  component "Windows SAPI" as TTS
+}
+node "Docker Compose 基础设施" {
+  database "MySQL 8.4\n3307\n运行时主库" as MySQL
+  database "PostgreSQL/pgvector\n5432\n后续增强预留" as PG
+  database "Redis\n6379\n缓存" as Redis
+  cloud "MinIO\n9000\n对象存储" as MinIO
+  database "Neo4j\n7687\n图谱镜像" as Neo4j
 }
 
-node "应用服务器" {
-  component "Nginx 静态资源服务" as Nginx
-  component "FastAPI 应用容器" as API
-  component "异步任务 Worker" as Worker
-}
-
-node "模型服务器" {
-  component "LLM/Vision 推理服务" as LLM
-  component "ASR/TTS 服务" as Speech
-  component "Embedding 服务" as Embed
-}
-
-database "PostgreSQL\n业务数据" as PG
-database "Milvus\n向量索引" as MV
-database "Neo4j\n文化图谱" as GDB
-database "Redis\n缓存与任务状态" as RD
-cloud "MinIO\n文件对象" as OSS
-node "监控节点" {
-  component "Prometheus / Grafana / Loki" as Monitor
-}
-
-Browser --> Nginx : HTTPS
-Browser --> API : REST API
-Nginx --> API : 反向代理
-API --> Worker : 投递异步任务
-API --> LLM
-API --> Speech
-API --> Embed
-API --> PG
-API --> MV
-API --> GDB
-API --> RD
-API --> OSS
-Worker --> PG
-Worker --> MV
-Worker --> OSS
-API --> Monitor : 指标与日志
-Worker --> Monitor
+Browser --> Web : HTTP
+Web --> API : REST API
+API --> MySQL
+API --> Redis
+API --> MinIO
+API --> Neo4j
+API ..> PG : 健康检查 / 预留
+API --> Ollama : 文本与视觉模型
+API --> ASR
+API --> TTS
 @enduml

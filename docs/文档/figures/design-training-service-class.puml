@@ -2,72 +2,18 @@
 skinparam dpi 160
 skinparam shadowing false
 skinparam classAttributeIconSize 0
-title AI 导游实训服务类图
+title AI 导游实训当前服务类图
 
-class TrainingController {
-  -trainingService: TrainingService
-  -requestValidator: RequestValidator
-  +listScenes(language: String): List<TrainingSceneDTO>
-  +submitAnswer(request: TrainingSubmissionDTO): TrainingReportDTO
-  +getReport(recordId: UUID): TrainingReportDTO
-}
-class TrainingService {
-  -virtualVisitorService: VirtualVisitorService
-  -trainingEvaluator: TrainingEvaluator
-  -speechService: SpeechService
-  -trainingRepository: TrainingRepository
-  -reportRepository: ReportRepository
-  +createVirtualQuestion(sceneId: UUID): TrainingTask
-  +scoreSubmission(submission: TrainingSubmissionDTO): TrainingReportDTO
-  +generateReport(record: TrainingRecord): TrainingReportDTO
-  +saveTrainingRecord(record: TrainingRecord): void
-}
-class VirtualVisitorService {
-  +personaTemplate: String
-  +difficultyLevel: String
-  +buildPersona(scene: TrainingScene): VirtualVisitor
-  +askQuestion(visitor: VirtualVisitor): String
-  +adjustDifficulty(history: List<TrainingRecord>): void
-}
-class TrainingEvaluator {
-  -knowledgeRepository: KnowledgeRepository
-  +rubricVersion: String
-  +extractEvidence(transcript: String): List<EvidenceUnit>
-  +scoreDimensions(evidence: List<EvidenceUnit>): ScoreDetail
-  +buildSuggestions(score: ScoreDetail): List<String>
-  +calculateTotalScore(score: ScoreDetail): Decimal
-}
-class SpeechService {
-  -asrAdapter: ASRAdapter
-  +language: String
-  +transcribe(audioFile: AudioFile): String
-  +detectLanguage(audioFile: AudioFile): String
-}
-class TrainingRepository {
-  -dataSource: PostgreSQL
-  -tableName: String
-  +findScenes(language: String): List<TrainingScene>
-  +saveRecord(record: TrainingRecord): TrainingRecord
-  +findRecord(recordId: UUID): TrainingRecord
-}
-class ReportRepository {
-  -dataSource: PostgreSQL
-  -tableName: String
-  +saveReport(report: TrainingReport): TrainingReport
-  +findByRecordId(recordId: UUID): TrainingReport
-}
-class KnowledgeRepository {
-  -dataSource: PostgreSQL
-  -vectorCollection: String
-  +findRubric(sceneId: UUID): EvaluationRubric
-  +findReviewedChunks(query: String): List<KnowledgeChunk>
-}
+class "FastAPI 实训路由" as API
+class ContentStore
+class RuntimeStore
+class ScoringService
+class LLMProvider
+class ASRAdapter
 
-TrainingController --> TrainingService
-TrainingService --> VirtualVisitorService
-TrainingService --> TrainingEvaluator
-TrainingService --> SpeechService
-TrainingService --> TrainingRepository
-TrainingService --> ReportRepository
-TrainingEvaluator --> KnowledgeRepository
+API --> ContentStore
+API --> RuntimeStore
+API --> ScoringService
+API --> ASRAdapter
+ScoringService ..> LLMProvider : 可选模型判分
 @enduml

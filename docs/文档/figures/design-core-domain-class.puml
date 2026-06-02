@@ -2,95 +2,116 @@
 skinparam dpi 160
 skinparam shadowing false
 skinparam classAttributeIconSize 0
-title 系统核心领域类图
+title LinguaSpace 核心领域类图
 
 class User {
-  +userId: UUID
-  +username: String
-  +role: UserRole
-  +status: AccountStatus
-  +createdAt: DateTime
-  +isActive(): Boolean
-  +changeRole(role: UserRole): void
-  +disable(reason: String): void
+  id
+  username
+  role
+  language
+  status
 }
 class GuideSession {
-  +sessionId: UUID
-  +userId: UUID
-  +language: String
-  +status: SessionStatus
-  +riskLevel: Integer
-  +startedAt: DateTime
-  +appendMessage(message: Message): void
-  +markRisk(level: Integer): void
-  +close(): void
+  id
+  visitorName
+  language
+  location
+  status
+  riskLevel
 }
 class Message {
-  +messageId: UUID
-  +sessionId: UUID
-  +inputType: InputType
-  +question: Text
-  +answer: Text
-  +reliable: Boolean
-  +createdAt: DateTime
-  +attachSources(chunks: List<KnowledgeChunk>): void
-  +markUnreliable(reason: String): void
+  id
+  sessionId
+  role
+  inputType
+  question
+  answer
+  reliable
+}
+class VisitorProfile {
+  sessionId
+  interests
+  intentTypes
+  visitStatus
+  riskLevel
+}
+class Favorite {
+  id
+  sessionId
+  itemType
+  itemId
+  title
+}
+class TakeoverLog {
+  id
+  sessionId
+  action
+  guideId
+  note
 }
 class KnowledgeDocument {
-  +documentId: UUID
-  +title: String
-  +source: String
-  +version: String
-  +reviewStatus: ReviewStatus
-  +splitToChunks(): List<KnowledgeChunk>
-  +submitReview(): void
+  id
+  title
+  source
+  content
+  status
+  vectorStatus
 }
 class KnowledgeChunk {
-  +chunkId: UUID
-  +documentId: UUID
-  +content: Text
-  +embeddingId: String
-  +reviewStatus: ReviewStatus
-  +sensitiveLevel: Integer
-  +canRetrieve(): Boolean
-  +updateEmbedding(embeddingId: String): void
+  id
+  documentId
+  title
+  content
+  status
+  vectorStatus
+}
+class ReviewTask {
+  id
+  objectType
+  objectId
+  status
+  reviewer
 }
 class TrainingRecord {
-  +recordId: UUID
-  +studentId: UUID
-  +taskId: UUID
-  +transcript: Text
-  +score: Decimal
-  +createdAt: DateTime
-  +calculateTotalScore(): Decimal
-  +generateReport(): TrainingReport
+  id
+  scenario
+  question
+  answer
+  score
+  metrics
 }
 class GuideCorrection {
-  +correctionId: UUID
-  +messageId: UUID
-  +guideId: UUID
-  +correctedContent: Text
-  +reviewStatus: ReviewStatus
-  +submitReview(): void
-  +approve(): void
-  +reject(reason: String): void
+  id
+  recordId
+  mode
+  optimizedAnswer
+  status
 }
 class ModelCallLog {
-  +logId: UUID
-  +requestId: String
-  +modelName: String
-  +provider: String
-  +latencyMs: Integer
-  +status: String
-  +recordSuccess(latencyMs: Integer): void
-  +recordFailure(error: String): void
+  id
+  requestId
+  capability
+  provider
+  model
+  latencyMs
+}
+class RequestTrace {
+  id
+  sessionId
+  question
+  language
+  pipeline
 }
 
-User "1" --> "0..*" GuideSession
-GuideSession "1" --> "1..*" Message
-KnowledgeDocument "1" --> "1..*" KnowledgeChunk
-Message "1" --> "0..*" ModelCallLog
-Message "1" --> "0..*" GuideCorrection
-User "1" --> "0..*" TrainingRecord
-KnowledgeChunk "0..*" --> "0..*" Message : source_refs
+GuideSession "1" *-- "*" Message
+GuideSession "1" o-- "0..1" VisitorProfile
+GuideSession "1" o-- "*" Favorite
+GuideSession "1" o-- "*" TakeoverLog
+KnowledgeDocument "1" *-- "*" KnowledgeChunk
+KnowledgeChunk "1" o-- "*" ReviewTask
+GuideCorrection "1" o-- "*" ReviewTask
+TrainingRecord "1" o-- "*" GuideCorrection
+GuideSession "1" o-- "*" RequestTrace
+Message ..> ModelCallLog : 触发模型调用
+User ..> GuideSession : 角色访问
 @enduml
