@@ -163,7 +163,7 @@
 \contentsline {subsection}{\numberline {3.10.3}接口测试结果}{114}{subsection.3.10.3}%
 \contentsline {subsection}{\numberline {3.10.4}非功能测试结果}{115}{subsection.3.10.4}%
 \contentsline {subsection}{\numberline {3.10.5}缺陷统计结果}{115}{subsection.3.10.5}%
-\contentsline {subsection}{\numberline {3.10.6}测试结果说明}{115}{subsection.3.10.6}%
+\contentsline {subsection}{\numberline {3.10.6}测试结果说明}{116}{subsection.3.10.6}%
 \contentsline {section}{\numberline {3.11}测试结论}{116}{section.3.11}%
 \contentsline {chapter}{\numberline {第四章\hspace {.3em}}用户使用说明书}{117}{chapter.4}%
 \contentsline {section}{\numberline {4.1}软件概述}{117}{section.4.1}%
