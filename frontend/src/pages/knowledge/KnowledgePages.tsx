@@ -1,4 +1,4 @@
-import { Check, Database, Plus, Search, Trash2, Upload, X } from "lucide-react";
+import { Check, Database, Network, Plus, Search, Trash2, Upload, X } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { graphApi, type GraphRelation } from "../../api/graph";
 import { knowledgeApi, type KnowledgeChunk, type KnowledgeDocument, type ReviewTask, type Term } from "../../api/knowledge";
@@ -30,7 +30,7 @@ export function KnowledgeChunksPage() {
 
 export function KnowledgeGraphPage() {
   const [items,setItems]=useState<GraphRelation[]>([]); const [form,setForm]=useState({source:"",relation:"",target:""}); const refresh=()=>graphApi.list().then((r)=>setItems(r.items)); useEffect(()=>{void refresh();},[]); const create=async(e:FormEvent)=>{e.preventDefault();await graphApi.create(form);setForm({source:"",relation:"",target:""});refresh();}; const remove=async(id:string)=>{await graphApi.remove(id);refresh();};
-  return <section className="page-stack"><Heading kicker="CULTURAL GRAPH" title="文化知识图谱" text="维护真实关系数据。"/><form className="route-filter" onSubmit={create}><input required value={form.source} onChange={(e)=>setForm({...form,source:e.target.value})} placeholder="实体"/><input required value={form.relation} onChange={(e)=>setForm({...form,relation:e.target.value})} placeholder="关系"/><input required value={form.target} onChange={(e)=>setForm({...form,target:e.target.value})} placeholder="目标"/><button className="primary compact"><Plus size={15}/>新增</button></form><Table heads={["实体","关系","目标","操作"]}>{items.slice(0,80).map((item)=><tr key={item.id}><td>{item.source}</td><td>{item.relation}</td><td>{item.target}</td><td><button onClick={()=>remove(item.id)}><Trash2 size={14}/></button></td></tr>)}</Table></section>;
+  return <section className="page-stack"><section className="knowledge-hero"><div><span className="page-kicker"><Network size={16}/> CULTURAL GRAPH</span><h1>文化知识图谱</h1><p>维护真实关系数据。</p></div></section><form className="route-filter" onSubmit={create}><input required value={form.source} onChange={(e)=>setForm({...form,source:e.target.value})} placeholder="实体"/><input required value={form.relation} onChange={(e)=>setForm({...form,relation:e.target.value})} placeholder="关系"/><input required value={form.target} onChange={(e)=>setForm({...form,target:e.target.value})} placeholder="目标"/><button className="primary compact"><Plus size={15}/>新增</button></form><Table heads={["实体","关系","目标","操作"]}>{items.slice(0,80).map((item)=><tr key={item.id}><td>{item.source}</td><td>{item.relation}</td><td>{item.target}</td><td><button onClick={()=>remove(item.id)}><Trash2 size={14}/></button></td></tr>)}</Table></section>;
 }
 
 export function KnowledgeReviewPage() {

@@ -46,12 +46,12 @@ type Metric = {
 const heroFlow = ["多模态输入", "RAG 检索", "知识图谱增强", "多语输出", "审核回流"];
 
 const capabilities: Array<[LucideIcon, string, string, string, string]> = [
-  [Languages, "多语交互", "面向跨境游客组织一致、自然的文化讲解。", "多语", "/assets/south-east-asia-travelers-C5xhLfv1.jpg"],
-  [Camera, "拍照识别", "从建筑与文化场景中提取线索，再进入可信检索。", "多模态", "/assets/ai-guide-interface-BcyhGD0v.jpg"],
-  [Database, "RAG 文旅知识库", "基于审核资料召回，回答来源可核验、可追踪。", "可信", "/assets/dali-ancient-town-CHirUmdU.jpg"],
-  [Network, "文化知识图谱", "将地点、民俗、建筑与非遗关系组织为文化网络。", "可解释", "/assets/knowledge-graph-bg-DOjZTcu-.jpg"],
-  [UserRoundCheck, "真人导游协同", "低置信问题转交导游接管，修正后进入审核回流。", "人机协同", "/assets/ethnic-culture-B5jOAThB.jpg"],
-  [BookOpenCheck, "AI 导游实训", "把知识、讲解与服务应对转化为高校训练场景。", "产教融合", "/assets/guide-training-center-CxilUMnr.jpg"],
+  [Languages, "多语交互", "面向跨境游客组织一致、自然的文化讲解。", "多语", "/assets/intro-feature-multilingual-tour.png"],
+  [Camera, "拍照识别", "从建筑与文化场景中提取线索，再进入可信检索。", "多模态", "/assets/intro-scenario-photo-recognition.png"],
+  [Database, "RAG 文旅知识库", "基于审核资料召回，回答来源可核验、可追踪。", "可信", "/assets/intro-feature-trusted-rag.png"],
+  [Network, "文化知识图谱", "将地点、民俗、建筑与非遗关系组织为文化网络。", "可解释", "/assets/intro-feature-cultural-knowledge-graph.png"],
+  [UserRoundCheck, "真人导游协同", "低置信问题转交导游接管，修正后进入审核回流。", "人机协同", "/assets/intro-scenario-human-guide-handoff.png"],
+  [BookOpenCheck, "AI 导游实训", "把知识、讲解与服务应对转化为高校训练场景。", "产教融合", "/assets/intro-feature-ai-guide-training.png"],
 ];
 
 const pipeline: Array<[LucideIcon, string, string]> = [
@@ -65,11 +65,11 @@ const pipeline: Array<[LucideIcon, string, string]> = [
 ];
 
 const scenarios = [
-  ["外国游客多语问答", "跨越语言门槛，获取有文化依据的旅行讲解。", "/tourist/chat", "/assets/south-east-asia-travelers-C5xhLfv1.jpg", "EXPLORE"],
-  ["拍照识别讲解", "让古建细节、街巷与文化场景成为导览入口。", "/tourist/image", "/assets/lijiang-old-town-BdFkiR19.jpg", "DISCOVER"],
-  ["导游人工接管", "在低置信与高风险时刻，把服务交给真人导游。", "/guide/takeover", "/assets/dali-ancient-town-CHirUmdU.jpg", "COLLABORATE"],
-  ["高校 AI 导游实训", "围绕真实文旅知识开展讲解训练与能力评估。", "/intro/features", "/assets/guide-training-center-CxilUMnr.jpg", "LEARN"],
-  ["文旅知识资产沉淀", "把优质讲解、术语与审核结果持续沉淀为资产。", "/knowledge/documents", "/assets/knowledge-graph-bg-DOjZTcu-.jpg", "GROW"],
+  ["外国游客多语问答", "跨越语言门槛，获取有文化依据的旅行讲解。", "/tourist/chat", "/assets/intro-scenario-multilingual-visitors.png", "EXPLORE"],
+  ["拍照识别讲解", "让古建细节、街巷与文化场景成为导览入口。", "/tourist/image", "/assets/intro-scenario-photo-recognition.png", "DISCOVER"],
+  ["导游人工接管", "在低置信与高风险时刻，把服务交给真人导游。", "/guide/takeover", "/assets/intro-scenario-human-guide-handoff.png", "COLLABORATE"],
+  ["高校 AI 导游实训", "围绕真实文旅知识开展讲解训练与能力评估。", "/intro/features", "/assets/intro-feature-ai-guide-training.png", "LEARN"],
+  ["文旅知识资产沉淀", "把优质讲解、术语与审核结果持续沉淀为资产。", "/knowledge/documents", "/assets/intro-scenario-knowledge-growth.png", "GROW"],
 ] as const;
 
 const barriers: Array<[LucideIcon, string, string]> = [

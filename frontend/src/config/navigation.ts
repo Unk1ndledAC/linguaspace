@@ -105,7 +105,7 @@ export const pageSpecs: Record<string, PageSpec> = Object.fromEntries(
 export const modulePages: Record<ModuleKey, PageSpec[]> = {
   intro: ["/intro/overview", "/intro/architecture", "/intro/features", "/intro/scenarios", "/intro/roadmap"].map((path) => pageSpecs[path]),
   tourist: ["/tourist/home", "/tourist/chat", "/tourist/routes", "/tourist/culture-tips"].map((path) => pageSpecs[path]),
-  guide: ["/guide/dashboard", "/guide/sessions", "/guide/takeover", "/guide/corrections", "/guide/cases", "/guide/profile"].map((path) => pageSpecs[path]),
+  guide: ["/guide/dashboard", "/guide/cases", "/guide/profile"].map((path) => pageSpecs[path]),
   knowledge: ["/knowledge/documents", "/knowledge/chunks", "/knowledge/graph", "/knowledge/review", "/knowledge/terms", "/knowledge/rag-test", "/knowledge/statistics"].map((path) => pageSpecs[path]),
   system: ["/system/dashboard", "/system/users", "/system/roles", "/system/permissions", "/system/health", "/system/logs", "/system/metrics", "/system/settings"].map((path) => pageSpecs[path]),
 };

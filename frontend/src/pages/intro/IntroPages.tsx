@@ -41,22 +41,22 @@ const architectureFlow: Array<[LucideIcon, string, string]> = [
 ];
 
 const featureCards: Array<[LucideIcon, string, string, string, string, string]> = [
-  [Languages, "多语文化问答", "统一术语与跨文化表达", "面向南亚、东南亚游客输出更自然、更一致的云南文化讲解。", "/tourist/chat", "/assets/south-east-asia-travelers-C5xhLfv1.jpg"],
-  [Mic, "语音随行导览", "ASR + RAG + TTS", "让游客边走边问，语音仍经过可信知识链路生成讲解。", "/tourist/voice", "/assets/dianchi-lake-l3U7QoMU.jpg"],
-  [Camera, "拍照识别讲解", "视觉理解 + 文化检索", "古建细节、街巷与文化场景都可以成为探索入口。", "/tourist/image", "/assets/lijiang-old-town-BdFkiR19.jpg"],
-  [Route, "兴趣路线推荐", "真实路线库", "围绕古城、山水、非遗与民族文化发现云南旅行路径。", "/tourist/routes", "/assets/yuanyang-terrace-B4TFew9L.jpg"],
-  [Database, "RAG 文旅知识库", "可信 · 可追踪", "上传、切片、审核、向量化和检索测试共同构成知识工程底座。", "/knowledge/documents", "/assets/dali-ancient-town-CHirUmdU.jpg"],
-  [Network, "文化知识图谱", "关系增强", "将地点、建筑、民俗、饮食与路线组织成可解释的文化网络。", "/knowledge/graph", "/assets/knowledge-graph-bg-DOjZTcu-.jpg"],
-  [UserRoundCheck, "真人导游协同", "Human-in-the-loop", "低置信问题由导游接管，优质修正提交审核后回流。", "/guide/dashboard", "/assets/ethnic-culture-B5jOAThB.jpg"],
-  [GraduationCap, "AI 导游实训", "产教融合", "将讲解、知识依据与服务应对转化为高校训练场景。", "/intro/roadmap", "/assets/guide-training-center-CxilUMnr.jpg"],
+  [Languages, "多语文化问答", "统一术语与跨文化表达", "面向南亚、东南亚游客输出更自然、更一致的云南文化讲解。", "/tourist/chat", "/assets/intro-feature-multilingual-tour.png"],
+  [Mic, "语音随行导览", "ASR + RAG + TTS", "让游客边走边问，语音仍经过可信知识链路生成讲解。", "/tourist/voice", "/assets/intro-overview-mountain-ai-network.png"],
+  [Camera, "拍照识别讲解", "视觉理解 + 文化检索", "古建细节、街巷与文化场景都可以成为探索入口。", "/tourist/image", "/assets/intro-scenario-photo-recognition.png"],
+  [Route, "兴趣路线推荐", "真实路线库", "围绕古城、山水、非遗与民族文化发现云南旅行路径。", "/tourist/routes", "/assets/route-photography.png"],
+  [Database, "RAG 文旅知识库", "可信 · 可追踪", "上传、切片、审核、向量化和检索测试共同构成知识工程底座。", "/knowledge/documents", "/assets/intro-feature-trusted-rag.png"],
+  [Network, "文化知识图谱", "关系增强", "将地点、建筑、民俗、饮食与路线组织成可解释的文化网络。", "/knowledge/graph", "/assets/intro-feature-cultural-knowledge-graph.png"],
+  [UserRoundCheck, "真人导游协同", "Human-in-the-loop", "低置信问题由导游接管，优质修正提交审核后回流。", "/guide/dashboard", "/assets/intro-scenario-human-guide-handoff.png"],
+  [GraduationCap, "AI 导游实训", "产教融合", "将讲解、知识依据与服务应对转化为高校训练场景。", "/intro/roadmap", "/assets/intro-feature-ai-guide-training.png"],
 ];
 
 const stories = [
-  ["01", "FOREIGN VISITOR", "外国游客多语问答", "从抵达云南的第一刻开始，游客可以用熟悉的语言了解古城、山水和文化礼仪。系统先检索审核资料，再组织自然讲解。", "/tourist/chat", "/assets/south-east-asia-travelers-C5xhLfv1.jpg"],
-  ["02", "VISUAL DISCOVERY", "拍照发现文化故事", "一处照壁、一段雕花或一条古城街巷，都可以成为理解当地文化的新入口。视觉模型提取线索，文化解释继续进入可信 RAG。", "/tourist/image", "/assets/lijiang-old-town-BdFkiR19.jpg"],
-  ["03", "HUMAN COLLABORATION", "低置信问题真人接管", "当问题需要更审慎的判断，平台把会话上下文交给真人导游。服务不是自动化终点，而是更流畅的人机协同。", "/guide/takeover", "/assets/dali-ancient-town-CHirUmdU.jpg"],
-  ["04", "KNOWLEDGE GROWTH", "修正内容审核回流", "优质讲解、术语修正和导游反馈不会直接写入知识库。它们先进入专家审核，再成为新的文化资产。", "/knowledge/review", "/assets/knowledge-graph-bg-DOjZTcu-.jpg"],
-  ["05", "GUIDE TRAINING", "高校 AI 导游实训", "学生在真实文旅知识背景下训练讲解能力、服务应对与文化边界意识，让技术继续服务人才培养。", "/intro/roadmap", "/assets/guide-training-center-CxilUMnr.jpg"],
+  ["01", "FOREIGN VISITOR", "外国游客多语问答", "从抵达云南的第一刻开始，游客可以用熟悉的语言了解古城、山水和文化礼仪。系统先检索审核资料，再组织自然讲解。", "/tourist/chat", "/assets/intro-scenario-multilingual-visitors.png"],
+  ["02", "VISUAL DISCOVERY", "拍照发现文化故事", "一处照壁、一段雕花或一条古城街巷，都可以成为理解当地文化的新入口。视觉模型提取线索，文化解释继续进入可信 RAG。", "/tourist/image", "/assets/intro-scenario-photo-recognition.png"],
+  ["03", "HUMAN COLLABORATION", "低置信问题真人接管", "当问题需要更审慎的判断，平台把会话上下文交给真人导游。服务不是自动化终点，而是更流畅的人机协同。", "/guide/takeover", "/assets/intro-scenario-human-guide-handoff.png"],
+  ["04", "KNOWLEDGE GROWTH", "修正内容审核回流", "优质讲解、术语修正和导游反馈不会直接写入知识库。它们先进入专家审核，再成为新的文化资产。", "/knowledge/review", "/assets/intro-scenario-knowledge-growth.png"],
+  ["05", "GUIDE TRAINING", "高校 AI 导游实训", "学生在真实文旅知识背景下训练讲解能力、服务应对与文化边界意识，让技术继续服务人才培养。", "/intro/roadmap", "/assets/intro-feature-ai-guide-training.png"],
 ] as const;
 
 const roadmap = [
@@ -83,7 +83,7 @@ export function IntroArchitecturePage() {
         kicker="TRUSTED AI ARCHITECTURE"
         title="从旅行现场，到可信文化智能链路"
         text="不是简单调用大模型，而是让多模态理解、文旅知识、文化图谱、多语输出与人工审核形成一条可解释、可复盘的编排链路。"
-        image="/assets/ai-guide-interface-BcyhGD0v.jpg"
+        image="/assets/intro-ai-pipeline.png"
         accent="系统架构"
       />
       <IntroReveal className="intro-light-section">
@@ -115,7 +115,7 @@ export function IntroFeaturesPage() {
         kicker="CAPABILITY MATRIX"
         title="一套文化底座，连接完整文旅服务"
         text="从游客随行导览，到真人导游协同，再到高校实训与知识资产沉淀，每一个能力都有真实业务入口。"
-        image="/assets/ethnic-culture-B5jOAThB.jpg"
+        image="/assets/intro-feature-ai-guide-training.png"
         accent="核心能力"
       />
       <IntroReveal className="intro-light-section">
@@ -130,7 +130,7 @@ export function IntroFeaturesPage() {
         </div>
       </IntroReveal>
       <IntroReveal className="intro-feature-spotlight">
-        <div className="intro-spotlight-image"><img src="/assets/business-ecosystem-D5f3Y2Dh.jpg" alt="" /></div>
+        <div className="intro-spotlight-image"><img src="/assets/intro-overview-ancient-town-tech.png" alt="" /></div>
         <div><span>ONE CULTURAL FOUNDATION</span><h2>文旅体验与知识工程，不再是两套割裂的系统</h2><p>游客端负责感受与探索，导游端负责服务与纠偏，知识库负责沉淀与审核，系统后台负责追踪与治理。它们围绕同一套可信文化底座协同运行。</p><Link to="/intro/architecture">查看系统架构 <ArrowRight size={15} /></Link></div>
       </IntroReveal>
       <IntroPageCta title="选择一个场景，开始体验" text="从游客多语问答进入，最直观地感受知识增强导览。" to="/tourist/chat" link="进入游客端" />
@@ -145,7 +145,7 @@ export function IntroScenariosPage() {
         kicker="REAL USER JOURNEY"
         title="从一次旅行提问，到一套文旅知识资产"
         text="沿着游客、导游、专家与高校师生的真实旅程，理解 LinguaSpace 如何让每一次服务都成为系统成长的起点。"
-        image="/assets/lijiang-old-town-BdFkiR19.jpg"
+        image="/assets/intro-scenario-multilingual-visitors.png"
         accent="应用场景"
       />
       <IntroReveal className="intro-light-section">
@@ -175,7 +175,7 @@ export function IntroRoadmapPage() {
         kicker="PRODUCT ROADMAP"
         title="从可信问答，走向跨境文旅智能生态"
         text="LinguaSpace 已经完成从知识增强导览到人机协同的基础闭环，并将继续围绕多语评测、动态信息和移动体验持续演进。"
-        image="/assets/yuanyang-terrace-B4TFew9L.jpg"
+        image="/assets/intro-roadmap-yunnan-journey.png"
         accent="建设路线"
       />
       <IntroReveal className="intro-light-section">

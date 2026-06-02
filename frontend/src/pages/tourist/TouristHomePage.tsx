@@ -6,16 +6,16 @@ import { ErrorState } from "../../components/common/ErrorState";
 import { LoadingState } from "../../components/common/LoadingState";
 
 const entries = [
-  [MessageCircle, "多语问答", "用熟悉的语言，了解沿途文化故事。", "MULTILINGUAL RAG", "/tourist/chat", "/assets/south-east-asia-travelers-C5xhLfv1.jpg"],
-  [Mic, "语音导览", "边走边问，让云南山水慢慢被听见。", "VOICE GUIDE", "/tourist/chat", "/assets/dianchi-lake-l3U7QoMU.jpg"],
-  [Camera, "拍照识别", "从古建细节与街巷风物中发现文化。", "VISION GUIDE", "/tourist/chat", "/assets/lijiang-old-town-BdFkiR19.jpg"],
-  [Map, "路线推荐", "按兴趣选择更适合自己的云南路径。", "SMART ROUTES", "/tourist/routes", "/assets/yuanyang-terrace-B4TFew9L.jpg"],
+  [MessageCircle, "多语问答", "用熟悉的语言，了解沿途文化故事。", "MULTILINGUAL RAG", "/tourist/chat", "/assets/tourist-recommend-scenic.png"],
+  [Mic, "语音导览", "边走边问，让云南山水慢慢被听见。", "VOICE GUIDE", "/tourist/chat", "/assets/tourist-recommend-heritage.png"],
+  [Camera, "拍照识别", "从古建细节与街巷风物中发现文化。", "VISION GUIDE", "/tourist/chat", "/assets/tourist-recommend-food.png"],
+  [Map, "路线推荐", "按兴趣选择更适合自己的云南路径。", "SMART ROUTES", "/tourist/routes", "/assets/route-photography.png"],
 ] as const;
 
 const routeImages = [
-  "/assets/dali-ancient-town-CHirUmdU.jpg",
-  "/assets/yuanyang-terrace-B4TFew9L.jpg",
-  "/assets/xishuangbanna-BzAqt_Pq.jpg",
+  "/assets/route-food.png",
+  "/assets/route-heritage.png",
+  "/assets/route-photography.png",
 ];
 
 export function TouristHomePage() {
